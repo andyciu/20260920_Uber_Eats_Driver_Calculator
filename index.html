@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uber Eats 跑單報酬計算機</title>
+<meta name="description" content="依 2026 年 7 月 21 日生效之《外送員權益保障及外送平臺管理法》與 Uber Eats 台灣報酬結構，計算趟數、夾單、時間與總報酬。">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --card-2: #f8f9fb;
+    --text: #1a1c1f;
+    --muted: #666b73;
+    --border: #e1e4e8;
+    --accent: #06c167;      /* Uber Eats green */
+    --accent-dark: #048a4a;
+    --accent-soft: #e3f8ec;
+    --warn: #d9480f;
+    --warn-soft: #fff1e6;
+    --info-soft: #eef3ff;
+    --danger: #c92a2a;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101214;
+      --card: #1b1e22;
+      --card-2: #22262b;
+      --text: #ecedee;
+      --muted: #9aa0a8;
+      --border: #30353b;
+      --accent: #17d47a;
+      --accent-dark: #0fb866;
+      --accent-soft: #123626;
+      --warn: #ff8c42;
+      --warn-soft: #3a2415;
+      --info-soft: #1b2436;
+      --danger: #ff6b6b;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101214; --card: #1b1e22; --card-2: #22262b; --text: #ecedee; --muted: #9aa0a8;
+    --border: #30353b; --accent: #17d47a; --accent-dark: #0fb866; --accent-soft: #123626;
+    --warn: #ff8c42; --warn-soft: #3a2415; --info-soft: #1b2436; --danger: #ff6b6b;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 64px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  header h1 { font-size: 24px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  header h1 .logo { width: 34px; height: 34px; border-radius: 8px; background: var(--accent); color: #000; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card h2 small { font-weight: 400; color: var(--muted); font-size: 12px; }
+
+  .grid { display: grid; gap: 12px; }
+  .grid.c4 { grid-template-columns: repeat(4, 1fr); }
+  .grid.c3 { grid-template-columns: repeat(3, 1fr); }
+  .grid.c2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 760px) { .grid.c4, .grid.c3 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 420px) { .grid.c4, .grid.c3, .grid.c2 { grid-template-columns: 1fr; } }
+
+  label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  label.field span.lbl { display: flex; align-items: center; gap: 4px; }
+  input[type="number"], input[type="text"], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-2); color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+  input[type="number"]::-webkit-inner-spin-button { opacity: .6; }
+  .unit { display: flex; align-items: center; gap: 6px; }
+  .unit input { flex: 1; }
+  .unit em { font-style: normal; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); padding: 8px 14px; transition: background .15s, transform .05s; }
+  button:hover { background: var(--border); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  button.primary:hover { background: var(--accent-dark); }
+  button.danger { color: var(--danger); }
+  button.sm { padding: 5px 10px; font-size: 13px; }
+  button.icon { padding: 4px 8px; line-height: 1; }
+
+  .help { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font-size: 10px; cursor: help; }
+  /* 全域提示框：掛在 body 下，避免被 overflow / 堆疊層遮住 */
+  #tip {
+    position: fixed; z-index: 1000; max-width: 280px; padding: 8px 10px; border-radius: 8px;
+    background: var(--text); color: var(--bg); font-size: 12px; line-height: 1.45; box-shadow: var(--shadow);
+    pointer-events: none; opacity: 0; transition: opacity .12s; white-space: normal;
+  }
+  #tip.show { opacity: 1; }
+
+  /* ===== 趟次卡片 ===== */
+  .trip { border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); padding: 12px; margin-bottom: 12px; }
+  .trip-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .trip-head .title { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--accent-soft); color: var(--accent-dark); }
+  .badge.stack { background: var(--info-soft); color: #3b5bdb; }
+  :root[data-theme="dark"] .badge.stack, :root:not([data-theme="light"]) .badge.stack { color: #8fa8ff; }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .trip-head .subtotal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .trip-head .subtotal small { font-weight: 400; color: var(--muted); font-size: 12px; margin-right: 4px; }
+
+  table.orders { width: 100%; border-collapse: collapse; margin: 10px 0 8px; font-size: 13px; }
+  table.orders th, table.orders td { padding: 6px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+  table.orders th { color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
+  table.orders td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.orders input { padding: 6px 8px; font-size: 14px; min-width: 70px; }
+  table.orders .topup { color: var(--warn); font-weight: 600; }
+  table.orders .ok { color: var(--accent-dark); }
+  .table-scroll { overflow-x: auto; }
+
+  .pickup-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .pickup-row label.field { min-width: 200px; }
+  .trip-extras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .trip-extras { grid-template-columns: repeat(2, 1fr); } }
+  .trip-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+  .empty { text-align: center; padding: 28px 12px; color: var(--muted); border: 1px dashed var(--border); border-radius: 10px; }
+
+  /* ===== 總計 ===== */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .stat .k { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  .stat .v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .v small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .stat.hero { grid-column: span 2; background: var(--accent-soft); border-color: var(--accent); }
+  .stat.hero .v { font-size: 32px; color: var(--accent-dark); }
+  .stat.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .stat.warn .v { color: var(--warn); }
+
+  .breakdown { margin-top: 12px; }
+  .breakdown table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .breakdown td { padding: 7px 4px; border-bottom: 1px solid var(--border); }
+  .breakdown td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .breakdown tr.total td { font-size: 16px; font-weight: 800; border-bottom: none; border-top: 2px solid var(--text); }
+  .breakdown td .note { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
+
+  /* ===== 趟次挑戰 ===== */
+  .tiers { display: flex; flex-direction: column; gap: 8px; }
+  .tier { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 8px; align-items: center; }
+  .tier .status { font-size: 12px; white-space: nowrap; min-width: 64px; }
+  @media (max-width: 420px) { .tier { grid-template-columns: 1fr 1fr; } }
+
+  details.rules summary { cursor: pointer; font-weight: 600; }
+  details.rules ul { padding-left: 20px; margin: 8px 0; font-size: 13px; color: var(--muted); }
+  details.rules li { margin: 4px 0; }
+  details.rules a { color: var(--accent-dark); }
+
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .spacer { flex: 1; }
+  .mono { font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="logo">UE</span>Uber Eats 跑單報酬計算機</h1>
+      <p>依 2026/7/21 生效之《外送員權益保障及外送平臺管理法》與 Uber Eats 台灣報酬結構 · 資料僅存於本機瀏覽器</p>
+    </div>
+    <div class="header-actions">
+      <button id="btnTheme" class="sm" title="切換深色 / 淺色">🌓 主題</button>
+      <button id="btnExport" class="sm">⬇ 匯出 CSV</button>
+      <button id="btnClear" class="sm danger">🗑 清除全部</button>
+    </div>
+  </header>
+
+  <!-- ===== 參數設定 ===== -->
+  <section class="card">
+    <h2>參數設定 <small>預設為 2026 年法定值，可自行調整</small></h2>
+    <div class="grid c4">
+      <label class="field">
+        <span class="lbl">法定最低時薪 <span class="help" tabindex="0" data-tip="2026 年（民國 115 年）最低工資每小時 NT$196。每年隨最低工資調整。">?</span></span>
+        <div class="unit"><input type="number" id="minWage" min="0" step="1" value="196"><em>元 / 小時</em></div>
+      </label>
+      <label class="field">
+        <span class="lbl">法定倍率 <span class="help" tabindex="0" data-tip="外送專法第 5 條：每筆訂單基本報酬不得低於最低工資時薪的 1.25 倍。">?</span></span>
+        <div class="unit"><input type="number" id="multiplier" min="0" step="0.05" value="1.25"><em>倍</em></div>
+      </label>
+      <label class="field">
+        <span class="lbl">每筆訂單最低保障 <span class="help" tabindex="0" data-tip="每筆訂單（一個取件地點 + 一個送達地點）基本報酬不得低於 NT$45；疊單須單單分別計價。">?</span></span>
+        <div class="unit"><input type="number" id="minPerOrder" min="0" step="1" value="45"><em>元 / 單</em></div>
+      </label>
+      <label class="field">
+        <span class="lbl">今日上線時數（選填） <span class="help" tabindex="0" data-tip="填入後可計算「每上線小時收入」。留空則以各單服務時間合計換算時薪。">?</span></span>
+        <div class="unit"><input type="number" id="onlineHours" min="0" step="0.25" placeholder="例：8"><em>小時</em></div>
+      </label>
+    </div>
+    <div class="hint">法定保障時薪 = <b id="guardRateText" class="mono">245</b> 元/小時（≈ <b id="perMinText" class="mono">4.08</b> 元/分鐘）。每趟行程法定最低 = max(每趟最低保障, 服務分鐘 ÷ 60 × 保障時薪)，先算至小數第二位再無條件進位至小數第一位。夾單各趟的服務時間自「接受派單」起算至完成該趟為止（重疊時間重複計入）。</div>
+  </section>
+
+  <!-- ===== 趟次列表 ===== -->
+  <section class="card">
+    <h2>
+      <span>趟次紀錄 <small>一趟 = 一次派單；夾單（疊單）請設定該趟的訂單數</small></span>
+      <span class="toolbar">
+        <button id="btnAddTrip" class="primary sm">＋ 新增一趟</button>
+        <button id="btnAddStack" class="sm">＋ 新增夾單（2 單）</button>
+      </span>
+    </h2>
+    <div id="tripList"></div>
+    <div id="tripEmpty" class="empty">尚未新增任何趟次，點擊「＋ 新增一趟」開始記錄。</div>
+  </section>
+
+  <!-- ===== 趟次挑戰 ===== -->
+  <section class="card">
+    <h2>
+      <span>額外趟次挑戰 <small>Uber 活動獎勵，依完成趟數自動套用已達成的最高階級</small></span>
+      <button id="btnAddTier" class="sm">＋ 新增階級</button>
+    </h2>
+    <div class="grid c2" style="margin-bottom:10px">
+      <label class="field">
+        <span class="lbl">獎勵計算方式</span>
+        <select id="tierMode">
+          <option value="highest">套用已達成的最高階級（階梯式，常見）</option>
+          <option value="sum">累加所有已達成階級</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="lbl">其他獎勵 / 活動加碼（選填）</span>
+        <div class="unit"><input type="number" id="otherBonus" min="0" step="1" placeholder="例：春節獎勵"><em>元</em></div>
+      </label>
+    </div>
+    <div class="tiers" id="tierList"></div>
+    <div class="hint">未設定階級則不計算趟次挑戰。挑戰獎勵不顯示於派單卡，會疊加於基本外送費之外。</div>
+  </section>
+
+  <!-- ===== 總計 ===== -->
+  <section class="card" id="summary">
+    <h2>總計</h2>
+    <div class="stats">
+      <div class="stat hero">
+        <div class="k">預估總收入</div>
+        <div class="v" id="sTotal">$0</div>
+      </div>
+      <div class="stat">
+        <div class="k">趟數</div>
+        <div class="v" id="sTrips">0<small>趟</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">訂單數</div>
+        <div class="v" id="sOrders">0<small>單</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">夾單趟數</div>
+        <div class="v" id="sStackTrips">0<small>趟</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">夾單訂單數</div>
+        <div class="v" id="sStackOrders">0<small>單</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">服務時間合計 <span class="help" tabindex="0" data-tip="各趟行程從接受派單到完成的時間加總（夾單各趟分別計入，重疊時間重複計算，與 Uber 明細一致）。">?</span></div>
+        <div class="v" id="sTime">0<small>分</small></div>
+      </div>
+      <div class="stat" id="statHourly">
+        <div class="k" id="sHourlyLabel">平均時薪（依服務時間）</div>
+        <div class="v" id="sHourly">$0<small>/小時</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">平均每趟</div>
+        <div class="v" id="sPerTrip">$0</div>
+      </div>
+      <div class="stat">
+        <div class="k">平均每單</div>
+        <div class="v" id="sPerOrder">$0</div>
+      </div>
+      <div class="stat" id="statTopup">
+        <div class="k">法定保障補足 <span class="help" tabindex="0" data-tip="派單基本報酬低於法定最低時，平台須補足之差額（Uber Eats 每 14 天核對一次，於週四存入 Uber 錢包）。">?</span></div>
+        <div class="v" id="sTopup">$0</div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <table>
+        <tbody>
+          <tr><td>基本外送費（派單卡金額合計）</td><td id="bBase">$0</td></tr>
+          <tr><td>基本報酬加成<span class="note">每小時加成 × 各趟服務時間</span></td><td id="bBoost">$0</td></tr>
+          <tr><td>法定基本報酬差額調整<span class="note">逐趟核算</span></td><td id="bTopup">$0</td></tr>
+          <tr><td>小費<span class="note">全歸外送夥伴</span></td><td id="bTips">$0</td></tr>
+          <tr><td>外送費調整 + 回程費用</td><td id="bAdj">$0</td></tr>
+          <tr><td>額外趟次挑戰獎勵<span id="bTierNote" class="note"></span></td><td id="bTier">$0</td></tr>
+          <tr><td>其他獎勵</td><td id="bOther">$0</td></tr>
+          <tr class="total"><td>預估總收入</td><td id="bTotal">$0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 規則說明 ===== -->
+  <section class="card">
+    <details class="rules">
+      <summary>計算規則與資料來源（2026 年 9 月）</summary>
+      <ul>
+        <li><b>基本外送費</b>：依預估外送服務期間、配送距離、當下訂單需求逐趟計算；派單卡顯示預估金額。</li>
+        <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，未滿 30 秒不計、30 秒以上以 1 分鐘計。</li>
+        <li><b>疊單／夾單</b>：「一趟行程」= 一個取件地點 + 一個送達地點。疊單會拆開後逐趟核算，每趟均須各自達到最低標準（例：三張疊單 $52／$45／$47，每趟不低於 45 元）。</li>
+        <li><b>疊單時間分配（2026/8/17 起「重疊時間重複計算」）</b>：每趟行程的服務期間皆自「接受派單」起算至完成該趟。官網派單 D 範例：接單→取餐 15 分、→完成第一趟 10 分、→完成第二趟 7 分，則第一趟 = 15+10 = 25 分（法定最低 245×25÷60 = 102.1，派單 $52 → 補足 50.1）、第二趟 = 15+10+7 = 32 分（法定最低 130.7，派單 $72 → 補足 58.7）。</li>
+        <li><b>金額進位</b>：法定最低保障金額先計算至小數點後第二位，再無條件進位至小數點後第一位。</li>
+        <li><b>基本報酬加成</b>：系統依即時供需於特定區域時段提供，公式為「每小時加成金額 × 該趟行程預估外送服務期間」（例：50 元/小時 × 30 分鐘 = 25 元）。疊單以其中每趟行程為計算基準，分別計算後加總。</li>
+        <li><b>補足差額</b>：Uber Eats 每 14 天核對一次，若低於法定最低保障金額，自動補足差額並於核對期間結束後的週四存入 Uber 錢包。</li>
+        <li><b>額外趟次挑戰</b>：疊加於基本外送費之外，派單卡不顯示；外送夥伴可自行決定是否參與。</li>
+        <li><b>小費</b>：消費者自願提供，金額全歸外送夥伴，派單卡不顯示。</li>
+        <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
+        <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
+        <li>來源：<a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
+          <a href="https://www.bnext.com.tw/article/89738//taiwan-food-delivery-law-2026" target="_blank" rel="noopener">數位時代：2026 外送專法</a> ·
+          <a href="https://www.justlaw.com.tw/ViewLawTxt.php?id=2033" target="_blank" rel="noopener">天秤座法律事務所：外送專法報酬、疊單解析</a></li>
+        <li>本工具僅供估算，實際金額以 Uber 行程明細與週報酬明細為準。</li>
+      </ul>
+    </details>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  const STORAGE_KEY = 'ue-driver-calc-v1';
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+
+  // ---------- 狀態 ----------
+  let state = {
+    settings: { minWage: 196, multiplier: 1.25, minPerOrder: 45, onlineHours: '' },
+    trips: [],
+    tiers: [],
+    tierMode: 'highest',
+    otherBonus: ''
+  };
+  let nextId = 1;
+
+  const uid = () => nextId++;
+  const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+  const money = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('zh-TW', { maximumFractionDigits: 1 });
+  const fmt = (n, d = 1) => n.toLocaleString('zh-TW', { maximumFractionDigits: d });
+
+  // 單筆：minutes = 接單→完成的總分鐘；夾單：minutes = 該趟「路段」分鐘（上一站→完成本趟），pickupMin = 接受派單→領取餐點
+  function newOrder() { return { id: uid(), base: '', minutes: '' }; }
+  function newTrip(orderCount = 1) {
+    const t = { id: uid(), pickupMin: '', boostRate: '', tip: '', adjust: '', returnFee: '', note: '', orders: [] };
+    for (let i = 0; i < orderCount; i++) t.orders.push(newOrder());
+    return t;
+  }
+  function newTier() { return { id: uid(), trips: '', bonus: '' }; }
+
+  // ---------- 儲存 ----------
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        state = Object.assign(state, parsed);
+        state.settings = Object.assign({ minWage: 196, multiplier: 1.25, minPerOrder: 45, onlineHours: '' }, parsed.settings || {});
+        state.trips = Array.isArray(parsed.trips) ? parsed.trips : [];
+        state.tiers = Array.isArray(parsed.tiers) ? parsed.tiers : [];
+        // 重新編 id，避免與載入資料衝突
+        let maxId = 0;
+        state.trips.forEach(t => { maxId = Math.max(maxId, t.id || 0); (t.orders || []).forEach(o => maxId = Math.max(maxId, o.id || 0)); });
+        state.tiers.forEach(t => maxId = Math.max(maxId, t.id || 0));
+        nextId = maxId + 1;
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---------- 計算 ----------
+  function guardRate() {
+    return num(state.settings.minWage) * num(state.settings.multiplier);
+  }
+  // Uber 明細規則：先計算至小數點後第二位，再無條件進位至小數點後第一位
+  function ceil1(x) { const two = Math.round(x * 100) / 100; return Math.ceil(two * 10 - 1e-9) / 10; }
+  function legalMinForOrder(minutes) {
+    return Math.max(num(state.settings.minPerOrder), ceil1(minutes / 60 * guardRate()));
+  }
+  // 每趟行程的服務時間：單筆 = 輸入的總分鐘；夾單 = 接單→取餐 + 各路段累計至完成本趟（重疊時間重複計入）
+  function orderMinutes(t) {
+    const stacked = t.orders.length > 1;
+    let cum = stacked ? num(t.pickupMin) : 0;
+    return t.orders.map(o => { cum += num(o.minutes); return stacked ? cum : num(o.minutes); });
+  }
+  function calcTrip(t) {
+    const r = { base: 0, minutes: 0, tripMinutes: 0, topup: 0, boost: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), orders: [] };
+    const mins = orderMinutes(t);
+    const rate = num(t.boostRate);
+    t.orders.forEach((o, i) => {
+      const base = num(o.base), m = mins[i];
+      const legal = legalMinForOrder(m);
+      const topup = Math.max(0, legal - base);
+      const boost = rate * m / 60; // 加成以每趟行程的服務期間為計算基準
+      r.orders.push({ base, mins: m, seg: num(o.minutes), legal, topup, boost, paid: base + topup });
+      r.base += base; r.minutes += m; r.topup += topup; r.boost += boost;
+      r.tripMinutes = Math.max(r.tripMinutes, m);
+    });
+    r.total = r.base + r.boost + r.topup + r.tip + r.adjust;
+    return r;
+  }
+  function calcAll() {
+    const s = { trips: state.trips.length, orders: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, boost: 0, topup: 0, tips: 0, adjust: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
+    state.trips.forEach(t => {
+      const r = calcTrip(t);
+      s.orders += t.orders.length;
+      if (t.orders.length > 1) { s.stackTrips++; s.stackOrders += t.orders.length; }
+      s.minutes += r.minutes; s.base += r.base; s.boost += r.boost; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust;
+    });
+    // 趟次挑戰
+    const achieved = state.tiers
+      .map(t => ({ trips: num(t.trips), bonus: num(t.bonus) }))
+      .filter(t => t.trips > 0 && s.trips >= t.trips);
+    if (achieved.length) {
+      if (state.tierMode === 'sum') {
+        s.tier = achieved.reduce((a, t) => a + t.bonus, 0);
+        s.tierLabel = `已達成 ${achieved.length} 個階級`;
+      } else {
+        const best = achieved.reduce((a, t) => (t.trips > a.trips ? t : a));
+        s.tier = best.bonus;
+        s.tierLabel = `達成 ${best.trips} 趟階級`;
+      }
+    } else if (state.tiers.some(t => num(t.trips) > 0)) {
+      const next = state.tiers.map(t => num(t.trips)).filter(n => n > s.trips).sort((a, b) => a - b)[0];
+      if (next) s.tierLabel = `再 ${next - s.trips} 趟達成下一階級`;
+    }
+    s.total = s.base + s.boost + s.topup + s.tips + s.adjust + s.tier + s.other;
+    return s;
+  }
+
+  // ---------- 渲染 ----------
+  function renderSettings() {
+    $('#minWage').value = state.settings.minWage;
+    $('#multiplier').value = state.settings.multiplier;
+    $('#minPerOrder').value = state.settings.minPerOrder;
+    $('#onlineHours').value = state.settings.onlineHours;
+    $('#tierMode').value = state.tierMode;
+    $('#otherBonus').value = state.otherBonus;
+  }
+
+  function renderTrips() {
+    const list = $('#tripList');
+    list.innerHTML = '';
+    $('#tripEmpty').style.display = state.trips.length ? 'none' : '';
+    state.trips.forEach((t, idx) => {
+      const r = calcTrip(t);
+      const isStack = t.orders.length > 1;
+      const el = document.createElement('div');
+      el.className = 'trip';
+      el.dataset.id = t.id;
+      el.innerHTML = `
+        <div class="trip-head">
+          <div class="title">
+            第 ${idx + 1} 趟
+            ${isStack ? `<span class="badge stack">夾單 ${t.orders.length} 單</span>` : `<span class="badge">單筆</span>`}
+            ${r.topup > 0 ? `<span class="badge warn">補足 ${money(r.topup)}</span>` : ''}
+          </div>
+          <div class="toolbar">
+            <label class="field" style="flex-direction:row;align-items:center;gap:6px">訂單數
+              <select data-act="orderCount" style="width:auto;padding:4px 8px">
+                ${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${n === t.orders.length ? 'selected' : ''}>${n}</option>`).join('')}
+              </select>
+            </label>
+            <button class="sm icon" data-act="dup" title="複製此趟">⧉</button>
+            <button class="sm icon danger" data-act="del" title="刪除此趟">✕</button>
+          </div>
+        </div>
+        ${isStack ? `
+        <div class="pickup-row">
+          <label class="field"><span class="lbl">接受派單 → 領取餐點 <span class="help" tabindex="0" data-tip="夾單共用的取餐路段：從接受派單到領取餐點的分鐘數。此段時間會重複計入本派單的每一趟行程。">?</span></span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="pickupMin" value="${t.pickupMin}" placeholder="例：15"><em>分</em></div></label>
+          <div class="hint" style="margin:0">每趟服務時間 = 取餐路段 + 各趟送達路段累計（2026/8/17 起，重疊時間重複計算）</div>
+        </div>` : ''}
+        <div class="table-scroll">
+        <table class="orders">
+          <thead><tr>
+            <th>#</th>
+            <th>派單基本報酬</th>
+            <th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成本趟送達的分鐘數。' : '從接受派單到完成該筆訂單的分鐘數（含前往店家、等餐、送餐、找地址）。未滿 30 秒不計、30 秒以上以 1 分鐘計。'}">?</span></th>
+            <th>服務時間 <span class="help" tabindex="0" data-tip="接受派單 → 完成本趟的累計分鐘數，用於法定最低與加成計算。">?</span></th>
+            <th>法定最低</th>
+            <th>補足</th>
+            <th>實得基本</th>
+          </tr></thead>
+          <tbody>
+            ${t.orders.map((o, i) => {
+              const ro = r.orders[i];
+              return `<tr data-oid="${o.id}">
+                <td class="num">${i + 1}</td>
+                <td><div class="unit"><input type="number" min="0" step="1" data-f="base" value="${o.base}" placeholder="例：52"><em>元</em></div></td>
+                <td><div class="unit"><input type="number" min="0" step="1" data-f="minutes" value="${o.minutes}" placeholder="${isStack ? '例：10' : '例：25'}"><em>分</em></div></td>
+                <td class="num">${fmt(ro.mins, 0)} 分</td>
+                <td class="num">${money(ro.legal)}</td>
+                <td class="num ${ro.topup > 0 ? 'topup' : 'ok'}">${ro.topup > 0 ? '+' + money(ro.topup) : '—'}</td>
+                <td class="num"><b>${money(ro.paid)}</b></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>
+        <div class="trip-extras">
+          <label class="field"><span class="lbl">基本報酬加成 <span class="help" tabindex="0" data-tip="該時段區域的每小時加成金額。加成以每趟行程為基準：每小時加成 × 該趟服務時間，夾單各趟分別計算後加總。">?</span></span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="boostRate" value="${t.boostRate}" placeholder="0"><em>元/時</em></div></label>
+          <label class="field"><span class="lbl">小費</span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="tip" value="${t.tip}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">外送費調整</span>
+            <div class="unit"><input type="number" step="1" data-tf="adjust" value="${t.adjust}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">回程費用</span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="returnFee" value="${t.returnFee}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">備註</span>
+            <input type="text" data-tf="note" value="${escapeHtml(t.note)}" placeholder="店家 / 區域"></label>
+        </div>
+        <div class="trip-foot">${tripFootHtml(r)}</div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function renderTiers() {
+    const list = $('#tierList');
+    list.innerHTML = '';
+    const tripsDone = state.trips.length;
+    state.tiers.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'tier';
+      el.dataset.id = t.id;
+      const target = num(t.trips);
+      const hit = target > 0 && tripsDone >= target;
+      el.innerHTML = `
+        <div class="unit"><em>完成</em><input type="number" min="1" step="1" data-tier="trips" value="${t.trips}" placeholder="趟數"><em>趟</em></div>
+        <div class="unit"><em>獎勵</em><input type="number" min="0" step="1" data-tier="bonus" value="${t.bonus}" placeholder="金額"><em>元</em></div>
+        <span class="status">${target > 0 ? (hit ? '<span class="badge">✓ 已達成</span>' : `<span class="badge warn">差 ${target - tripsDone} 趟</span>`) : ''}</span>
+        <button class="sm icon danger" data-act="delTier" title="刪除">✕</button>`;
+      list.appendChild(el);
+    });
+  }
+
+  function renderSummary() {
+    const s = calcAll();
+    const gr = guardRate();
+    $('#guardRateText').textContent = fmt(gr, 2);
+    $('#perMinText').textContent = fmt(gr / 60, 2);
+
+    $('#sTotal').textContent = money(s.total);
+    $('#sTrips').innerHTML = `${s.trips}<small>趟</small>`;
+    $('#sOrders').innerHTML = `${s.orders}<small>單</small>`;
+    $('#sStackTrips').innerHTML = `${s.stackTrips}<small>趟</small>`;
+    $('#sStackOrders').innerHTML = `${s.stackOrders}<small>單</small>`;
+    const h = Math.floor(s.minutes / 60), m = Math.round(s.minutes % 60);
+    $('#sTime').innerHTML = s.minutes >= 60 ? `${h}<small>時</small> ${m}<small>分</small>` : `${fmt(s.minutes, 0)}<small>分</small>`;
+
+    const online = num(state.settings.onlineHours);
+    let hourly = 0, label;
+    if (online > 0) { hourly = s.total / online; label = '每上線小時收入'; }
+    else if (s.minutes > 0) { hourly = s.total / (s.minutes / 60); label = '平均時薪（依服務時間）'; }
+    else { label = '平均時薪'; }
+    $('#sHourlyLabel').textContent = label;
+    $('#sHourly').innerHTML = `${money(hourly)}<small>/小時</small>`;
+    $('#statHourly').classList.toggle('warn', online > 0 && hourly > 0 && hourly < gr);
+
+    $('#sPerTrip').textContent = money(s.trips ? s.total / s.trips : 0);
+    $('#sPerOrder').textContent = money(s.orders ? s.total / s.orders : 0);
+    $('#sTopup').textContent = money(s.topup);
+    $('#statTopup').classList.toggle('warn', s.topup > 0);
+
+    $('#bBase').textContent = money(s.base);
+    $('#bBoost').textContent = money(s.boost);
+    $('#bTopup').textContent = money(s.topup);
+    $('#bTips').textContent = money(s.tips);
+    $('#bAdj').textContent = money(s.adjust);
+    $('#bTier').textContent = money(s.tier);
+    $('#bTierNote').textContent = s.tierLabel;
+    $('#bOther').textContent = money(s.other);
+    $('#bTotal').textContent = money(s.total);
+  }
+
+  function renderAll() { renderTrips(); renderTiers(); renderSummary(); save(); }
+  function renderLight() { renderTiers(); renderSummary(); save(); } // 不重繪輸入中的趟次表格
+
+  function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  function tripFootHtml(r) {
+    return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 加成 <b class="mono">${money(r.boost)}</b> · 補足 <b class="mono">${money(r.topup)}</b></span>
+      <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${money(r.total)}</span>`;
+  }
+
+  // 只更新某趟的計算欄位（避免輸入時失焦）
+  function refreshTripRow(tripEl, t) {
+    const r = calcTrip(t);
+    $$('tbody tr', tripEl).forEach((tr, i) => {
+      const ro = r.orders[i]; if (!ro) return;
+      const tds = tr.querySelectorAll('td');
+      tds[3].textContent = `${fmt(ro.mins, 0)} 分`;
+      tds[4].textContent = money(ro.legal);
+      tds[5].textContent = ro.topup > 0 ? '+' + money(ro.topup) : '—';
+      tds[5].className = 'num ' + (ro.topup > 0 ? 'topup' : 'ok');
+      tds[6].innerHTML = `<b>${money(ro.paid)}</b>`;
+    });
+    $('.trip-foot', tripEl).innerHTML = tripFootHtml(r);
+    const head = $('.trip-head .title', tripEl);
+    const warn = head.querySelector('.badge.warn');
+    if (r.topup > 0) {
+      if (warn) warn.textContent = `補足 ${money(r.topup)}`;
+      else head.insertAdjacentHTML('beforeend', `<span class="badge warn">補足 ${money(r.topup)}</span>`);
+    } else if (warn) warn.remove();
+  }
+
+  // ---------- 事件 ----------
+  $('#btnAddTrip').addEventListener('click', () => { state.trips.push(newTrip(1)); renderAll(); focusLast(); });
+  $('#btnAddStack').addEventListener('click', () => { state.trips.push(newTrip(2)); renderAll(); focusLast(); });
+  $('#btnAddTier').addEventListener('click', () => { state.tiers.push(newTier()); renderTiers(); save(); });
+  function focusLast() {
+    const last = $('#tripList .trip:last-child input[data-f="base"]');
+    if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  }
+
+  ['minWage', 'multiplier', 'minPerOrder', 'onlineHours'].forEach(k => {
+    $('#' + k).addEventListener('input', e => { state.settings[k] = e.target.value; renderAll(); });
+  });
+  $('#tierMode').addEventListener('change', e => { state.tierMode = e.target.value; renderLight(); });
+  $('#otherBonus').addEventListener('input', e => { state.otherBonus = e.target.value; renderLight(); });
+
+  $('#tripList').addEventListener('input', e => {
+    const tripEl = e.target.closest('.trip'); if (!tripEl) return;
+    const t = state.trips.find(x => x.id === +tripEl.dataset.id); if (!t) return;
+    if (e.target.dataset.f) {
+      const tr = e.target.closest('tr');
+      const o = t.orders.find(x => x.id === +tr.dataset.oid); if (!o) return;
+      o[e.target.dataset.f] = e.target.value;
+    } else if (e.target.dataset.tf) {
+      t[e.target.dataset.tf] = e.target.value;
+    } else return;
+    refreshTripRow(tripEl, t);
+    renderLight();
+  });
+  $('#tripList').addEventListener('change', e => {
+    if (e.target.dataset.act !== 'orderCount') return;
+    const tripEl = e.target.closest('.trip');
+    const t = state.trips.find(x => x.id === +tripEl.dataset.id); if (!t) return;
+    const n = +e.target.value;
+    while (t.orders.length < n) t.orders.push(newOrder());
+    while (t.orders.length > n) t.orders.pop();
+    renderAll();
+  });
+  $('#tripList').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act]'); if (!btn) return;
+    const tripEl = btn.closest('.trip');
+    const idx = state.trips.findIndex(x => x.id === +tripEl.dataset.id); if (idx < 0) return;
+    if (btn.dataset.act === 'del') { state.trips.splice(idx, 1); renderAll(); }
+    if (btn.dataset.act === 'dup') {
+      const src = state.trips[idx];
+      const copy = JSON.parse(JSON.stringify(src));
+      copy.id = uid(); copy.orders.forEach(o => o.id = uid());
+      state.trips.splice(idx + 1, 0, copy); renderAll();
+    }
+  });
+
+  $('#tierList').addEventListener('input', e => {
+    const el = e.target.closest('.tier'); if (!el || !e.target.dataset.tier) return;
+    const t = state.tiers.find(x => x.id === +el.dataset.id); if (!t) return;
+    t[e.target.dataset.tier] = e.target.value;
+    renderSummary(); save();
+    // 更新狀態徽章（不重繪 input）
+    const target = num(t.trips), hit = target > 0 && state.trips.length >= target;
+    $('.status', el).innerHTML = target > 0 ? (hit ? '<span class="badge">✓ 已達成</span>' : `<span class="badge warn">差 ${target - state.trips.length} 趟</span>`) : '';
+  });
+  $('#tierList').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-act="delTier"]'); if (!btn) return;
+    const el = btn.closest('.tier');
+    state.tiers = state.tiers.filter(x => x.id !== +el.dataset.id);
+    renderTiers(); renderSummary(); save();
+  });
+
+  $('#btnClear').addEventListener('click', () => {
+    if (!state.trips.length && !state.tiers.length) return;
+    if (!confirm('確定要清除所有趟次與挑戰設定嗎？')) return;
+    state.trips = []; state.tiers = []; state.otherBonus = ''; state.settings.onlineHours = '';
+    renderSettings(); renderAll(); toast('已清除');
+  });
+
+  $('#btnExport').addEventListener('click', () => {
+    const rows = [['派單', '行程', '派單基本報酬', '路段分鐘', '服務分鐘(累計)', '法定最低', '補足差額', '實得基本', '加成', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
+    state.trips.forEach((t, i) => {
+      const r = calcTrip(t);
+      t.orders.forEach((o, j) => {
+        const ro = r.orders[j];
+        rows.push([i + 1, j + 1, ro.base, ro.seg, ro.mins, ro.legal.toFixed(1), ro.topup.toFixed(1), ro.paid.toFixed(1),
+          ro.boost.toFixed(2), j === 0 ? r.tip : '', j === 0 ? num(t.adjust) : '', j === 0 ? num(t.returnFee) : '', j === 0 ? r.total.toFixed(1) : '', j === 0 ? t.note : '']);
+      });
+    });
+    const s = calcAll();
+    rows.push([]);
+    rows.push(['總計', '', s.base.toFixed(1), '', s.minutes, '', s.topup.toFixed(1), '', s.boost.toFixed(2), s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；夾單派單 ${s.stackTrips}；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
+    const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ubereats-earnings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('已匯出 CSV');
+  });
+
+  // 主題
+  const THEME_KEY = 'ue-driver-calc-theme';
+  function applyTheme(t) { if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; }
+  try { applyTheme(localStorage.getItem(THEME_KEY)); } catch (e) {}
+  $('#btnTheme').addEventListener('click', () => {
+    const isDark = document.documentElement.dataset.theme === 'dark' ||
+      (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isDark ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  });
+
+  // 提示框（掛在 body，避免被表格 overflow 或上層卡片遮住）
+  const tipEl = document.createElement('div'); tipEl.id = 'tip'; document.body.appendChild(tipEl);
+  function showTip(target) {
+    tipEl.textContent = target.dataset.tip || '';
+    tipEl.classList.add('show');
+    const r = target.getBoundingClientRect();
+    const tw = tipEl.offsetWidth, th = tipEl.offsetHeight, vw = window.innerWidth, gap = 8;
+    let left = Math.min(Math.max(8, r.left + r.width / 2 - tw / 2), vw - tw - 8);
+    let top = r.top - th - gap;
+    if (top < 8) top = r.bottom + gap; // 上方空間不足則顯示在下方
+    tipEl.style.left = left + 'px'; tipEl.style.top = top + 'px';
+  }
+  function hideTip() { tipEl.classList.remove('show'); }
+  document.addEventListener('mouseover', e => { const h = e.target.closest('.help'); if (h) showTip(h); });
+  document.addEventListener('mouseout', e => { if (e.target.closest('.help')) hideTip(); });
+  document.addEventListener('focusin', e => { const h = e.target.closest('.help'); if (h) showTip(h); });
+  document.addEventListener('focusout', e => { if (e.target.closest('.help')) hideTip(); });
+  document.addEventListener('click', e => { const h = e.target.closest('.help'); if (h) { tipEl.classList.contains('show') ? showTip(h) : hideTip(); } else hideTip(); });
+  window.addEventListener('scroll', hideTip, { passive: true });
+
+  let toastTimer;
+  function toast(msg) {
+    const el = $('#toast'); el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  // ---------- 啟動 ----------
+  load();
+  renderSettings();
+  renderAll();
+})();
+</script>
+</body>
+</html>
