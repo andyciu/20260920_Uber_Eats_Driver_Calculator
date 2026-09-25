@@ -1,0 +1,18 @@
+{
+  "name": "Uber Eats 跑單報酬計算機",
+  "short_name": "跑單計算機",
+  "description": "依外送專法與 Uber Eats 台灣報酬結構，計算趟數、夾單、時間與總報酬。",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "zh-Hant",
+  "background_color": "#f4f5f7",
+  "theme_color": "#06c167",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
