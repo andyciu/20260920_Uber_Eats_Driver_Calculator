@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Uber Eats 跑單報酬計算機</title>
 <meta name="description" content="依 2026 年 7 月 21 日生效之《外送員權益保障及外送平臺管理法》與 Uber Eats 台灣報酬結構，計算趟數、夾單、時間與總報酬。">
+<meta name="theme-color" content="#06c167">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="跑單計算機">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
   :root {
     --bg: #f4f5f7;
@@ -181,6 +189,7 @@
       <p>依 2026/7/21 生效之《外送員權益保障及外送平臺管理法》與 Uber Eats 台灣報酬結構 · 資料僅存於本機瀏覽器</p>
     </div>
     <div class="header-actions">
+      <button id="btnInstall" class="sm" hidden>📲 安裝 App</button>
       <button id="btnTheme" class="sm" title="切換深色 / 淺色">🌓 主題</button>
       <button id="btnExport" class="sm">⬇ 匯出 CSV</button>
       <button id="btnClear" class="sm danger">🗑 清除全部</button>
@@ -753,6 +762,29 @@
   document.addEventListener('focusout', e => { if (e.target.closest('.help')) hideTip(); });
   document.addEventListener('click', e => { const h = e.target.closest('.help'); if (h) { tipEl.classList.contains('show') ? showTip(h) : hideTip(); } else hideTip(); });
   window.addEventListener('scroll', hideTip, { passive: true });
+
+  // 安裝為 App（PWA）：Chrome / Edge 觸發 beforeinstallprompt 後才顯示按鈕
+  let installPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installPrompt = e;
+    $('#btnInstall').hidden = false;
+  });
+  $('#btnInstall').addEventListener('click', async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    installPrompt = null;
+    $('#btnInstall').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    $('#btnInstall').hidden = true;
+    toast('已安裝到主畫面');
+  });
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
 
   let toastTimer;
   function toast(msg) {
