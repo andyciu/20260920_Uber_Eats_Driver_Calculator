@@ -187,6 +187,11 @@
   .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 50; }
   .toast.show { opacity: 1; }
+  dialog.dialog { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); box-shadow: var(--shadow); padding: 18px; width: min(420px, calc(100vw - 32px)); }
+  dialog.dialog::backdrop { background: rgba(0, 0, 0, .45); }
+  dialog.dialog h3 { margin: 0 0 8px; font-size: 16px; }
+  dialog.dialog p { margin: 0 0 16px; font-size: 14px; color: var(--muted); }
+  .dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -199,6 +204,8 @@
     <div class="header-actions">
       <button id="btnInstall" class="sm" hidden>📲 安裝 App</button>
       <button id="btnTheme" class="sm" title="切換深色 / 淺色">🌓 主題</button>
+      <button id="btnImport" class="sm">⬆ 匯入 CSV</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       <button id="btnExport" class="sm">⬇ 匯出 CSV</button>
       <button id="btnClear" class="sm danger">🗑 清除全部</button>
     </div>
@@ -373,6 +380,17 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<dialog id="importDialog" class="dialog">
+  <form method="dialog">
+    <h3>匯入 CSV</h3>
+    <p id="importMsg"></p>
+    <div class="dialog-actions">
+      <button value="cancel">取消</button>
+      <button value="append">附加到現有派單後</button>
+      <button value="replace" class="primary">取代目前派單</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
 (function () {
@@ -464,6 +482,7 @@
     });
   }
   const isEstimate = (t) => t.orders.length > 1 && t.timeMode === 'total';
+  const LAST_LABEL = (mode) => mode === 'unknown' ? '不確定' : mode === 'order' ? '依接單順序' : `第 ${mode + 1} 單最後送達`;
   // 估算模式的送達順序：'order' 依接單順序（預設）、數字 L 表示第 L+1 單最後送達、'unknown' 不確定
   function lastMode(t) {
     const v = t.lastDelivered ?? 'order';
@@ -894,7 +913,7 @@
   });
 
   $('#btnExport').addEventListener('click', () => {
-    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '過路費償還', '本派單小計', '現金收款', '備註']];
+    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '過路費償還', '本派單小計', '現金收款', '備註', '接單→取餐', '送達順序']];
     state.trips.forEach((t, i) => {
       const r = calcTrip(t);
       t.orders.forEach((o, j) => {
@@ -903,11 +922,13 @@
         // 估算模式的範圍以「下限~上限」輸出（避免 Excel 把「-」當成負號）
         const rng = (lo, hi, f = (v) => v.toFixed(1)) => lo === hi ? f(lo) : `${f(lo)}~${f(hi)}`;
         const pool = (lo, hi = lo) => r.pooled ? (first ? rng(lo, hi) : '') : null;
+        const stacked = t.orders.length > 1;
         const seg = r.estimate ? (first ? `總時間 ${fmtDur(toSec(t.totalTime))}` : '') : fmtDur(ro.segSec);
         rows.push([i + 1, j + 1, STATUS[ro.status], (r.pooled ? '總額' : '逐單') + (r.estimate ? '・估算' : ''), pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), seg,
           rng(ro.secs, ro.secsHi, fmtDur), rng(ro.mins, ro.minsHi, String), rng(ro.legal, ro.legalHi),
           pool(r.topup, r.topupHi) ?? rng(ro.topup, ro.topupHi), pool(r.paid, r.paidHi) ?? rng(ro.paid, ro.paidHi),
-          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? rng(r.total, r.totalHi) : '', first ? r.cash : '', first ? t.note : '']);
+          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? rng(r.total, r.totalHi) : '', first ? r.cash : '', first ? t.note : '',
+          first && stacked && t.pickupMin !== '' ? fmtDur(toSec(t.pickupMin)) : '', first && stacked ? LAST_LABEL(lastMode(t)) : '']);
       });
     });
     const s = calcAll();
@@ -923,6 +944,136 @@
     a.download = `ubereats-earnings-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
     toast('已匯出 CSV');
+  });
+
+  // ---------- 匯入 CSV ----------
+  // 讀回本工具匯出的 CSV（欄位以標題名稱對應）：只讀輸入欄位，計算欄位載入後依目前參數重算；參數設定與趟次挑戰不在 CSV 內
+  const STATUS_KEY = Object.fromEntries(Object.entries(STATUS).map(([k, v]) => [v, k]));
+  // RFC 4180：欄位可用雙引號包住，內含逗號、換行，"" 表示一個引號
+  function parseCsv(text) {
+    const rows = []; let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c !== '"') f += c;
+        else if (text[i + 1] === '"') { f += '"'; i++; }
+        else q = false;
+      } else if (c === '"') q = true;
+      else if (c === ',') { row.push(f); f = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(f); rows.push(row); row = []; f = '';
+      } else f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+  // 以 Excel 另存後可能變成 Big5 且沒有 BOM：UTF-8 解碼失敗就改用 Big5
+  function decodeCsv(buf) {
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+    catch (e) { return new TextDecoder('big5').decode(buf); }
+  }
+  // 「X 分 Y 秒」、「m:ss」或純數字（分鐘）→ 秒；空白回傳 null、無法辨識回傳 NaN
+  function parseDur(v) {
+    const s = String(v ?? '').replace(/^總時間/, '').trim();
+    let m;
+    if (!s) return null;
+    if ((m = s.match(/^(\d+(?:\.\d+)?)\s*分(?:\s*(\d+(?:\.\d+)?)\s*秒)?$/))) return Math.round(num(m[1]) * 60 + num(m[2]));
+    if ((m = s.match(/^(\d+(?:\.\d+)?)\s*秒$/))) return Math.round(num(m[1]));
+    if ((m = s.match(/^(\d+):(\d{1,2})$/))) return num(m[1]) * 60 + num(m[2]);
+    return /^\d+(\.\d+)?$/.test(s) ? toSec(s) : NaN;
+  }
+  // 0 與空白計算結果相同，一律還原為空白以顯示提示文字
+  const durField = (sec) => sec ? String(sec / 60) : '';
+  function parseAmount(v) {
+    const s = String(v ?? '').replace(/[$,\s]/g, '');
+    const n = Number(s);
+    return !s || n === 0 ? '' : Number.isFinite(n) ? String(n) : NaN;
+  }
+  function parseLast(v) {
+    const m = v.match(/^第\s*(\d+)\s*單/);
+    return !v || v === LAST_LABEL('order') ? 'order' : v === LAST_LABEL('unknown') ? 'unknown' : m && +m[1] >= 1 ? String(m[1] - 1) : NaN;
+  }
+  function tripsFromCsv(text) {
+    const rows = parseCsv(text);
+    const head = rows.findIndex(r => r.some(c => c.trim() === '派單') && r.some(c => c.trim() === '行程'));
+    if (head < 0) throw new Error('找不到標題列，請使用本工具匯出的 CSV');
+    const col = {};
+    rows[head].forEach((c, i) => { col[c.replace(/^\ufeff/, '').trim()] = i; });
+    const trips = [];
+    let cur = null, curKey = null, firstSvc = null;
+    // 夾單「接單→取餐」：新版直接匯出；舊版 CSV 以第一單服務時間 − 路段時間反推
+    const finish = () => {
+      if (!cur) return;
+      const stacked = cur.orders.length > 1;
+      if (cur.feeMode === 'total' && stacked) { cur.totalBase = cur.orders[0].base; cur.orders.forEach(o => o.base = ''); }
+      if (stacked && col['接單→取餐'] == null && cur.timeMode === 'segments' && Number.isFinite(firstSvc))
+        cur.pickupMin = durField(Math.max(0, firstSvc - toSec(cur.orders[0].minutes)));
+      if (!stacked) { cur.pickupMin = ''; cur.lastDelivered = 'order'; }
+    };
+    for (let r = head + 1; r < rows.length; r++) {
+      const row = rows[r];
+      const get = (name) => col[name] == null ? '' : String(row[col[name]] ?? '').trim();
+      const key = get('派單');
+      if (!/^\d+$/.test(key)) continue; // 空白列、總計列
+      const fail = (name, msg = '格式不正確') => { throw new Error(`第 ${r + 1} 列「${name}」${msg}：${get(name)}`); };
+      const amt = (name) => { const v = parseAmount(get(name)); if (Number.isNaN(v)) fail(name); return v; };
+      const dur = (name) => { const v = parseDur(get(name)); if (Number.isNaN(v)) fail(name); return v; };
+      const status = STATUS_KEY[get('狀態') || STATUS.done];
+      if (!status) fail('狀態', '無法辨識');
+      if (key !== curKey) {
+        finish();
+        const mode = get('計價方式');
+        cur = newTrip(0); curKey = key; trips.push(cur);
+        cur.feeMode = mode.includes('總額') ? 'total' : 'each';
+        cur.timeMode = mode.includes('估算') ? 'total' : 'segments';
+        if (cur.timeMode === 'total') cur.totalTime = durField(dur('路段時間'));
+        cur.pickupMin = durField(dur('接單→取餐'));
+        const last = parseLast(get('送達順序'));
+        if (Number.isNaN(last)) fail('送達順序', '無法辨識');
+        cur.lastDelivered = last;
+        firstSvc = parseDur(get('服務時間(實際)'));
+        Object.assign(cur, { tip: amt('小費'), adjust: amt('外送費調整'), returnFee: amt('回程費用'), toll: amt('過路費償還'), cash: amt('現金收款'), note: get('備註') });
+      }
+      if (cur.orders.length >= 5) throw new Error(`第 ${r + 1} 列：每張派單最多 5 單`);
+      const o = newOrder();
+      o.status = status;
+      o.base = amt('派單基本報酬');
+      if (cur.orders.length) o.acceptAt = durField(dur('接單時點'));
+      if (cur.timeMode === 'segments') o.minutes = durField(dur('路段時間'));
+      cur.orders.push(o);
+    }
+    finish();
+    if (!trips.length) throw new Error('檔案內沒有派單資料');
+    return trips;
+  }
+  // 按下按鈕時（submit）就決定結果；Esc 等其他關閉方式在 close 時視為取消
+  let importChoice = null;
+  const settleImport = (v) => { if (importChoice) { importChoice(v); importChoice = null; } };
+  $('#importDialog form').addEventListener('submit', (e) => settleImport(e.submitter?.value));
+  $('#importDialog').addEventListener('close', () => settleImport('cancel'));
+  function askImportMode() {
+    $('#importDialog').showModal();
+    return new Promise(res => { importChoice = res; });
+  }
+  const importInput = $('#importFile');
+  $('#btnImport').addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files[0];
+    importInput.value = ''; // 允許重新選同一個檔案
+    if (!file) return;
+    let trips;
+    try { trips = tripsFromCsv(decodeCsv(await file.arrayBuffer())); }
+    catch (e) { alert('匯入失敗：' + e.message); return; }
+    let mode = 'replace';
+    if (state.trips.length) {
+      $('#importMsg').textContent = `檔案內有 ${trips.length} 張派單，目前已有 ${state.trips.length} 張。參數設定與趟次挑戰不受影響。`;
+      mode = await askImportMode();
+      if (mode !== 'append' && mode !== 'replace') return;
+    }
+    state.trips = mode === 'append' ? state.trips.concat(trips) : trips;
+    renderAll();
+    toast(`已匯入 ${trips.length} 張派單`);
   });
 
   // 主題
