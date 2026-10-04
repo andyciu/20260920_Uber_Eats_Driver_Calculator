@@ -140,7 +140,7 @@
 
   .pickup-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pickup-row label.field { min-width: 200px; }
-  .trip-extras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .trip-extras { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
   @media (max-width: 760px) { .trip-extras { grid-template-columns: repeat(2, 1fr); } }
   .trip-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 
@@ -163,6 +163,9 @@
   .breakdown td { padding: 7px 4px; border-bottom: 1px solid var(--border); }
   .breakdown td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   .breakdown tr.total td { font-size: 16px; font-weight: 800; border-bottom: none; border-top: 2px solid var(--text); }
+  .breakdown tr.cash td { color: var(--muted); }
+  .breakdown tr.payout td { font-size: 15px; font-weight: 700; border-bottom: none; }
+  .breakdown tr.payout.owe td { color: var(--warn); }
   .breakdown td .note { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 6px; }
 
   /* ===== 趟次挑戰 ===== */
@@ -320,6 +323,8 @@
           <tr><td>額外趟次挑戰獎勵<span id="bTierNote" class="note"></span></td><td id="bTier">$0</td></tr>
           <tr><td>其他獎勵</td><td id="bOther">$0</td></tr>
           <tr class="total"><td>預估總收入</td><td id="bTotal">$0</td></tr>
+          <tr class="cash" hidden><td>現金收款<span class="note">已在手上，結算時自外送費抵銷</span></td><td id="bCash">$0</td></tr>
+          <tr class="payout" id="rowPayout" hidden><td><span id="bPayoutLabel">預計匯款金額</span><span id="bPayoutNote" class="note"></span></td><td id="bPayout">$0</td></tr>
         </tbody>
       </table>
     </div>
@@ -344,6 +349,7 @@
         <li><b>小費</b>：消費者自願提供，金額全歸外送夥伴，派單卡不顯示。</li>
         <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
         <li><b>過路費償還（合約 §1m、§6d）</b>：提供貨運服務期間產生的道路、橋樑、渡口、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還。屬代墊費用的償還款，不計入法定最低保障（§5）；計入預估總收入以便對照週報酬明細的入帳金額。</li>
+        <li><b>現金單抵銷（合約 §9、§6e）</b>：現金單依 App 指定金額向收貨人收取的現金（不含小費）屬代 Uber Eats 收取的款項，於結算時自當期外送費抵銷，週報酬明細會列出抵銷項目。現金收款不是收入，不影響總收入與法定最低；預計匯款金額 = 預估總收入 − 現金收款。若當期外送費低於現金收款，差額構成你對 Uber Eats 的交易債務並遞延至清償，Uber Eats 得直接從你留存的卡片或銀行帳戶扣款，還款手續費由你負擔。現金的保管風險由你自行承擔。</li>
         <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
         <li>來源：Uber Eats 外送合作夥伴條款（2026/7/21 生效）§1b、§1f、§5、§6、§7、§8 ·
           <a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
@@ -386,7 +392,7 @@
   const STATUS = { done: '完成', cancelNA: '取消（不可歸責）', cancelA: '取消（可歸責）' };
   function newOrder() { return { id: uid(), base: '', minutes: '', acceptAt: '', status: 'done' }; }
   function newTrip(orderCount = 1) {
-    const t = { id: uid(), pickupMin: '', feeMode: 'each', totalBase: '', tip: '', adjust: '', returnFee: '', toll: '', note: '', orders: [] };
+    const t = { id: uid(), pickupMin: '', feeMode: 'each', totalBase: '', tip: '', adjust: '', returnFee: '', toll: '', cash: '', note: '', orders: [] };
     for (let i = 0; i < orderCount; i++) t.orders.push(newOrder());
     return t;
   }
@@ -447,7 +453,7 @@
   }
   function calcTrip(t) {
     const pooled = isPooled(t);
-    const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), orders: [] };
+    const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), cash: num(t.cash), orders: [] };
     const secs = orderSeconds(t);
     t.orders.forEach((o, i) => {
       // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較（合約 §1b、§5）
@@ -463,16 +469,17 @@
     if (pooled) { r.base = num(t.totalBase); r.topup = Math.max(0, r.legal - r.base); }
     r.paid = r.base + r.topup;
     // 過路費屬償還款，不參與法定最低比較（合約 §5、§6d），僅加入小計
+    // 現金收款是代收款、不是收入，不計入小計，只在結算時抵銷（合約 §9）
     r.total = r.paid + r.tip + r.adjust + r.toll;
     return r;
   }
   function calcAll() {
-    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, toll: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
+    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, toll: 0, cash: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
     state.trips.forEach(t => {
       const r = calcTrip(t);
       s.orders += t.orders.length; s.cancelled += r.cancelled;
       if (t.orders.length > 1) { s.stackTrips++; s.stackOrders += t.orders.length; }
-      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust; s.toll += r.toll;
+      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust; s.toll += r.toll; s.cash += r.cash;
     });
     // 趟次挑戰：只計入至少完成一單的派單
     const achieved = state.tiers
@@ -492,6 +499,7 @@
       if (next) s.tierLabel = `再 ${next - s.doneTrips} 趟達成下一階級`;
     }
     s.total = s.base + s.topup + s.tips + s.adjust + s.toll + s.tier + s.other;
+    s.payout = s.total - s.cash; // 負值 = 現金收款超過應付外送費，差額為對 Uber 的交易債務
     return s;
   }
 
@@ -585,6 +593,8 @@
             <div class="unit"><input type="number" min="0" step="1" data-tf="returnFee" value="${t.returnFee}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">過路費償還 <span class="help" tabindex="0" data-tip="提供貨運服務期間產生的道路、橋樑、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還（合約 §6d）。屬償還款，不計入法定最低保障。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="toll" value="${t.toll ?? ''}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">現金收款 <span class="help" tabindex="0" data-tip="現金單依 App 指定金額向收貨人收取的現金（不含小費）。屬代 Uber 收取的款項，不是收入，結算時自外送費抵銷（合約 §9）。">?</span></span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="cash" value="${t.cash ?? ''}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">備註</span>
             <input type="text" data-tf="note" value="${escapeHtml(t.note)}" placeholder="店家 / 區域"></label>
         </div>
@@ -650,6 +660,15 @@
     $('#bTierNote').textContent = s.tierLabel;
     $('#bOther').textContent = money(s.other);
     $('#bTotal').textContent = money(s.total);
+    // 現金收款：只在有填寫時顯示抵銷後的預計匯款
+    const hasCash = s.cash > 0, owe = s.payout < 0;
+    $('#bCash').closest('tr').hidden = !hasCash;
+    $('#rowPayout').hidden = !hasCash;
+    $('#rowPayout').classList.toggle('owe', owe);
+    $('#bCash').textContent = '−' + money(s.cash);
+    $('#bPayoutLabel').textContent = owe ? '預計倒欠 Uber' : '預計匯款金額';
+    $('#bPayoutNote').textContent = owe ? '差額構成交易債務，Uber 得自留存的卡片或帳戶扣款' : '總收入 − 現金收款';
+    $('#bPayout').textContent = money(Math.abs(s.payout));
   }
 
   function renderAll() { renderTrips(); renderTiers(); renderSummary(); save(); }
@@ -658,7 +677,7 @@
   function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
   function tripFootHtml(r) {
-    return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 補足 <b class="mono">${money(r.topup)}</b>${r.cancelled ? ` · 取消 <b class="mono">${r.cancelled}</b> 單` : ''}</span>
+    return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 補足 <b class="mono">${money(r.topup)}</b>${r.cancelled ? ` · 取消 <b class="mono">${r.cancelled}</b> 單` : ''}${r.cash ? ` · 現金收款 <b class="mono">${money(r.cash)}</b>（不計入小計）` : ''}</span>
       <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${money(r.total)}</span>`;
   }
   // 分＋秒兩格共同對應一個以分鐘儲存的值；attr 為 data-f（訂單欄位）或 data-tf（趟次欄位）
@@ -787,7 +806,7 @@
   });
 
   $('#btnExport').addEventListener('click', () => {
-    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '過路費償還', '本派單小計', '備註']];
+    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '過路費償還', '本派單小計', '現金收款', '備註']];
     state.trips.forEach((t, i) => {
       const r = calcTrip(t);
       t.orders.forEach((o, j) => {
@@ -796,12 +815,13 @@
         const pool = (v) => r.pooled ? (first ? v.toFixed(1) : '') : null;
         rows.push([i + 1, j + 1, STATUS[ro.status], r.pooled ? '總額' : '逐單', pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), fmtDur(ro.segSec), fmtDur(ro.secs), ro.mins, ro.legal.toFixed(1),
           pool(r.topup) ?? ro.topup.toFixed(1), pool(r.paid) ?? ro.paid.toFixed(1),
-          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? r.total.toFixed(1) : '', first ? t.note : '']);
+          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? r.total.toFixed(1) : '', first ? r.cash : '', first ? t.note : '']);
       });
     });
     const s = calcAll();
     rows.push([]);
-    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.toll, s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
+    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.toll, s.total.toFixed(1), s.cash, `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}` +
+      (s.cash ? `；${s.payout < 0 ? '預計倒欠 Uber' : '預計匯款'} ${Math.abs(s.payout).toFixed(1)}` : '')]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');

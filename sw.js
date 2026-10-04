@@ -1,6 +1,6 @@
 // 離線快取：頁面採網路優先（有網路時永遠拿到最新版），其餘靜態檔快取優先。
 // 修改任何預先快取的檔案後，請更新 CACHE 版本號。
-const CACHE = 'ue-driver-calc-v5';
+const CACHE = 'ue-driver-calc-v6';
 const ASSETS = [
   './',
   './index.html',
