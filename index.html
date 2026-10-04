@@ -191,7 +191,7 @@
 <div class="wrap">
   <header>
     <div>
-      <h1><span class="logo">UE</span>Uber Eats 跑單報酬計算機</h1>
+      <h1><span class="logo" aria-hidden="true"><svg viewBox="116 76 280 360" width="19" height="24" fill="currentColor"><path d="M172 92h168a40 40 0 0 1 40 40v248a40 40 0 0 1-40 40H172a40 40 0 0 1-40-40V132a40 40 0 0 1 40-40zm6 40a8 8 0 0 0-8 8v236a8 8 0 0 0 8 8h156a8 8 0 0 0 8-8V140a8 8 0 0 0-8-8z" fill-rule="evenodd"/><rect x="196" y="160" width="120" height="52" rx="10"/><rect x="196" y="236" width="32" height="32" rx="8"/><rect x="240" y="236" width="32" height="32" rx="8"/><rect x="284" y="236" width="32" height="32" rx="8"/><rect x="196" y="282" width="32" height="32" rx="8"/><rect x="240" y="282" width="32" height="32" rx="8"/><rect x="284" y="282" width="32" height="32" rx="8"/><rect x="196" y="328" width="32" height="32" rx="8"/><rect x="240" y="328" width="32" height="32" rx="8"/><rect x="284" y="328" width="32" height="32" rx="8"/></svg></span>Uber Eats 跑單報酬計算機</h1>
       <p>依 2026/7/21 生效之《外送員權益保障及外送平臺管理法》與 Uber Eats 台灣報酬結構 · 資料僅存於本機瀏覽器</p>
     </div>
     <div class="header-actions">
@@ -259,7 +259,7 @@
       </label>
     </div>
     <div class="tiers" id="tierList"></div>
-    <div class="hint">未設定階級則不計算趟次挑戰。挑戰獎勵屬基本外送費以外的另行給付，不計入法定最低保障；於 App「機會」頁面或派單卡另行揭露，不會與基本外送費合併成單一金額。</div>
+    <div class="hint">未設定階級則不計算趟次挑戰。挑戰獎勵屬基本外送費以外的另行給付，不計入法定最低保障；會在 App 內另行顯示。</div>
   </section>
 
   <!-- ===== 總計 ===== -->
@@ -303,7 +303,7 @@
         <div class="v" id="sPerOrder">$0</div>
       </div>
       <div class="stat" id="statTopup">
-        <div class="k">法定保障補足 <span class="help" tabindex="0" data-tip="派單基本報酬低於法定最低時，平台須補足之差額。外送費每週支付；差額以每兩週為一期核算並支付，遇假日順延至下一個工作日。">?</span></div>
+        <div class="k">法定保障補足 <span class="help" tabindex="0" data-tip="派單基本報酬低於法定最低時，平台須補足之差額。外送費每週支付；差額每兩週核算並補足。">?</span></div>
         <div class="v" id="sTopup">$0</div>
       </div>
       <div class="stat">
@@ -314,7 +314,7 @@
 
     <div class="grid c2" style="margin-top:12px">
       <label class="field">
-        <span class="lbl">即時提領手續費合計（選填） <span class="help" tabindex="0" data-tip="使用即時提領提前領款時，Uber 自提領金額扣除的手續費合計（合約 §6i）。屬自願加值服務費用，不影響報酬與法定最低，只減少實際入帳金額。費率以 App 顯示為準。">?</span></span>
+        <span class="lbl">即時提領手續費合計（選填） <span class="help" tabindex="0" data-tip="使用即時提領提前領款時，Uber 自提領金額扣除的手續費合計，費率以 App 顯示為準。不影響報酬與法定最低，只減少實際入帳金額。">?</span></span>
         <div class="unit"><input type="number" id="instantFee" min="0" step="1" placeholder="例：30"><em>元</em></div>
       </label>
     </div>
@@ -343,25 +343,24 @@
     <details class="rules">
       <summary>計算規則與資料來源（2026 年 9 月）</summary>
       <ul>
-        <li><b>基本外送費</b>：依預估行駛距離、預估行駛時間、預估等待時間、取件及送達屬性等因素計算；派單卡顯示預估基本外送費（含基本報酬加成，不含差額補足）。</li>
-        <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，取整至最接近的分鐘數（未滿 30 秒捨去、30 秒以上進位，合約 §5）；夾單各路段不先取整，只對每單最終的服務時間取整。時間欄位可填到秒，對照 App 行程費用紀錄輸入；括號內為取整前的實際時間。</li>
+        <li><b>基本外送費</b>：依預估距離、時間等行程因素計算；派單卡顯示預估基本外送費（含基本報酬加成，不含差額補足）。</li>
+        <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，取整至最接近的分鐘數（未滿 30 秒捨去、30 秒以上進位）；夾單各路段不先取整，只對每單最終的服務時間取整。時間欄位可填到秒，對照 App 行程費用紀錄輸入；括號內為取整前的實際時間。</li>
         <li><b>疊單／夾單</b>：「一趟行程」= 一個取件地點 + 一個送達地點。疊單會拆開後逐趟核算，每趟均須各自達到最低標準（例：三張疊單 $52／$45／$47，每趟不低於 45 元）。</li>
         <li><b>疊單時間分配（2026/8/17 起「重疊時間重複計算」）</b>：每趟行程的服務期間皆自「接受派單」起算至完成該趟。官網派單 D 範例：接單→取餐 15 分、→完成第一趟 10 分、→完成第二趟 7 分，則第一趟 = 15+10 = 25 分（法定最低 245×25÷60 = 102.1，派單 $52 → 補足 50.1）、第二趟 = 15+10+7 = 32 分（法定最低 130.7，派單 $72 → 補足 58.7）。</li>
-        <li><b>中途加單（合約 §7b、§7d）</b>：接單後才收到的追加請求，派單卡顯示總預估外送費的「淨增加」金額；該單服務期間自接受該追加請求時起算（§1f），請在「接單時點」填入首單接單後第幾分鐘接受。</li>
-        <li><b>多商家組合單（合約 §7c）</b>：派單卡只顯示一個總預估外送費。因無法得知各單拆分，本工具以「派單總額 vs 各單法定最低合計」估算補足，為補足金額的保守下限；實際以 Uber 最低報酬保障補充明細為準。</li>
-        <li><b>取消（合約 §6g、§8d）</b>：不可歸責於你的取消，報酬不低於「已提供服務分鐘 ÷ 60 × 最低時薪 × 1.25」，沒有每筆 45 元保底；可歸責於你的取消無報酬。服務時間自接單起算至取消為止。本工具假設全部取消的派單不計入趟次挑戰。</li>
+        <li><b>中途加單</b>：接單後才收到的追加訂單，派單卡顯示的是增加的金額；該單服務時間自接受該追加訂單時起算，請在「接單時點」填入首單接單後第幾分鐘接受。</li>
+        <li><b>多商家組合單</b>：派單卡只顯示一個總金額。因無法得知各單拆分，本工具以「派單總額 vs 各單法定最低合計」估算補足，為補足金額的保守下限；實際以 Uber 報酬明細為準。</li>
+        <li><b>取消</b>：不可歸責於你的取消，報酬不低於「已提供服務分鐘 ÷ 60 × 最低時薪 × 1.25」，沒有每筆 45 元保底；可歸責於你的取消無報酬。服務時間自接單起算至取消為止。本工具假設全部取消的派單不計入趟次挑戰。</li>
         <li><b>金額進位</b>：法定最低保障金額先計算至小數點後第二位，再無條件進位至小數點後第一位。</li>
         <li><b>基本報酬加成（Base+）</b>：系統依即時供需於特定區域時段自動加計，<b>已包含在派單卡顯示的預估基本外送費內</b>，屬於基本外送費的一部分（非另行獎勵），並計入法定最低保障的比較。因此請直接輸入派單卡金額，不需另外加計。</li>
-        <li><b>補足差額</b>：外送費每週支付；法定最低保障以每兩週為一期核算，低於法定最低時以「基本報酬差額調整費用」補足，並於最低報酬保障補充明細中逐項載明、每兩週支付一次。付款日遇臺灣公共假日順延至下一個工作日。</li>
-        <li><b>額外趟次挑戰</b>：屬基本外送費以外另行提供的獎金／獎勵，不計入法定最低保障；於 App「機會」頁面或派單卡另行揭露，不會與基本外送費合併顯示。外送夥伴可自行決定是否參與。</li>
+        <li><b>補足差額</b>：外送費每週支付；低於法定最低的差額每兩週核算一次並補足入帳，金額會列在報酬明細中。</li>
+        <li><b>額外趟次挑戰</b>：屬基本外送費以外另行提供的獎金／獎勵，不計入法定最低保障；會在 App 內另行顯示。外送夥伴可自行決定是否參與。</li>
         <li><b>小費</b>：消費者自願提供，金額全歸外送夥伴，派單卡不顯示。</li>
         <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
-        <li><b>過路費償還（合約 §1m、§6d）</b>：提供貨運服務期間產生的道路、橋樑、渡口、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還。屬代墊費用的償還款，不計入法定最低保障（§5）；計入預估總收入以便對照週報酬明細的入帳金額。</li>
-        <li><b>現金單抵銷（合約 §9、§6e）</b>：現金單依 App 指定金額向收貨人收取的現金（不含小費）屬代 Uber Eats 收取的款項，於結算時自當期外送費抵銷，週報酬明細會列出抵銷項目。現金收款不是收入，不影響總收入與法定最低；預計匯款金額 = 預估總收入 − 現金收款。若當期外送費低於現金收款，差額構成你對 Uber Eats 的交易債務並遞延至清償，Uber Eats 得直接從你留存的卡片或銀行帳戶扣款，還款手續費由你負擔。現金的保管風險由你自行承擔。</li>
-        <li><b>即時提領手續費（合約 §6i）</b>：Uber Eats 得酌情提供即時提領功能，讓你在固定付款日前提前領款；若你選擇使用，Uber Eats 得依該功能約定的條款，直接自總提領金額扣除手續費。合約未載明費率，以 App 顯示為準。手續費屬自願加值服務費用，不影響報酬與法定最低，只減少實際入帳金額；預計匯款金額會再扣除此項。</li>
+        <li><b>過路費償還</b>：外送途中如有過路費等收費，可向 Uber Eats 申請償還（以 Uber 規定為準）。屬代墊費用的償還款，不計入法定最低保障；計入預估總收入以便對照週報酬明細的入帳金額。</li>
+        <li><b>現金單抵銷</b>：現金單向收貨人收取的現金（不含小費）屬代 Uber Eats 收取的款項，結算時會從外送費中扣抵。現金收款不是收入，不影響總收入與法定最低；預計匯款金額 = 預估總收入 − 現金收款。若現金收款超過應付外送費，差額需償還給 Uber Eats。</li>
+        <li><b>即時提領手續費</b>：使用即時提領提前領款時，Uber 會從提領金額扣除手續費，費率以 App 顯示為準。手續費不影響報酬與法定最低，只減少實際入帳金額；預計匯款金額會再扣除此項。</li>
         <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
-        <li>來源：Uber Eats 外送合作夥伴條款（2026/7/21 生效）§1b、§1f、§5、§6、§7、§8 ·
-          <a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
+        <li>來源：<a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
           <a href="https://www.bnext.com.tw/article/89738//taiwan-food-delivery-law-2026" target="_blank" rel="noopener">數位時代：2026 外送專法</a> ·
           <a href="https://www.justlaw.com.tw/ViewLawTxt.php?id=2033" target="_blank" rel="noopener">天秤座法律事務所：外送專法報酬、疊單解析</a></li>
         <li>本工具僅供估算，實際金額以 Uber 行程明細與週報酬明細為準。</li>
@@ -437,7 +436,7 @@
   }
   // Uber 明細規則：先計算至小數點後第二位，再無條件進位至小數點後第一位
   function ceil1(x) { const two = Math.round(x * 100) / 100; return Math.ceil(two * 10 - 1e-9) / 10; }
-  // 完成：max(每筆最低, 時間換算)；不可歸責取消：僅時間換算、無每筆最低（合約 §6g）；可歸責取消：無報酬（§8d）
+  // 完成：max(每筆最低, 時間換算)；不可歸責取消：僅時間換算、無每筆最低；可歸責取消：無報酬
   function legalMinForOrder(minutes, status = 'done') {
     if (status === 'cancelA') return 0;
     const byTime = ceil1(minutes / 60 * guardRate());
@@ -449,10 +448,10 @@
   // 時間欄位以「分鐘（可含小數）」儲存，計算時一律換成整數秒，避免浮點誤差
   const toSec = (v) => Math.round(num(v) * 60);
   const fmtDur = (sec) => `${Math.floor(sec / 60)} 分 ${sec % 60} 秒`;
-  // 合約 §5：外送服務期間取整至最接近之分鐘數（未滿 30 秒捨去、30 秒以上進位）
+  // 外送服務期間取整至最接近之分鐘數（未滿 30 秒捨去、30 秒以上進位）
   const roundMin = (sec) => Math.floor((sec + 30) / 60);
   // 每趟行程的服務時間（秒）：單筆 = 輸入的總時間；夾單 = 接單→取餐 + 各路段累計至完成本趟（重疊時間重複計入），
-  // 中途加單則自接受該單時起算（合約 §1f、§7b、§7d）。各路段不先取整，只對每單最終的服務時間取整
+  // 中途加單則自接受該單時起算。各路段不先取整，只對每單最終的服務時間取整
   function orderSeconds(t) {
     const stacked = t.orders.length > 1;
     let cum = stacked ? toSec(t.pickupMin) : 0;
@@ -466,7 +465,7 @@
     const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), cash: num(t.cash), orders: [] };
     const secs = orderSeconds(t);
     t.orders.forEach((o, i) => {
-      // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較（合約 §1b、§5）
+      // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較
       const status = orderStatus(o), m = roundMin(secs[i]);
       const base = pooled ? 0 : num(o.base);
       const legal = legalMinForOrder(m, status);
@@ -475,11 +474,11 @@
       r.base += base; r.minutes += m; r.legal += legal; r.topup += topup;
       if (status !== 'done') r.cancelled++;
     });
-    // 多商家組合單（§7c）只顯示總額、無法得知各單拆分：以「總額 vs 各單法定最低合計」估算，為補足金額的保守下限
+    // 多商家組合單只顯示總額、無法得知各單拆分：以「總額 vs 各單法定最低合計」估算，為補足金額的保守下限
     if (pooled) { r.base = num(t.totalBase); r.topup = Math.max(0, r.legal - r.base); }
     r.paid = r.base + r.topup;
-    // 過路費屬償還款，不參與法定最低比較（合約 §5、§6d），僅加入小計
-    // 現金收款是代收款、不是收入，不計入小計，只在結算時抵銷（合約 §9）
+    // 過路費屬償還款，不參與法定最低比較，僅加入小計
+    // 現金收款是代收款、不是收入，不計入小計，只在結算時抵銷
     r.total = r.paid + r.tip + r.adjust + r.toll;
     return r;
   }
@@ -509,7 +508,7 @@
       if (next) s.tierLabel = `再 ${next - s.doneTrips} 趟達成下一階級`;
     }
     s.total = s.base + s.topup + s.tips + s.adjust + s.toll + s.tier + s.other;
-    // 實際入帳：扣除現金收款抵銷（§9）與即時提領手續費（§6i）；負值 = 現金收款超過應付外送費，差額為對 Uber 的交易債務
+    // 實際入帳：扣除現金收款抵銷與即時提領手續費；負值 = 現金收款超過應付外送費，差額需償還給 Uber
     s.payout = s.total - s.cash - s.instantFee;
     return s;
   }
@@ -556,12 +555,12 @@
         <div class="pickup-row">
           <label class="field"><span class="lbl">接受派單 → 領取餐點 <span class="help" tabindex="0" data-tip="夾單共用的取餐路段：從接受派單到領取餐點的分鐘數。此段時間會重複計入本派單的每一趟行程。">?</span></span>
             ${durInputHtml('data-tf', 'pickupMin', t.pickupMin, '例：15')}</label>
-          <label class="field"><span class="lbl">派單金額 <span class="help" tabindex="0" data-tip="同一商家多單或中途加單：派單卡逐單顯示（加單顯示總額的淨增加）。多商家組合單：派單卡只顯示一個總額（合約 §7c）。">?</span></span>
+          <label class="field"><span class="lbl">派單金額 <span class="help" tabindex="0" data-tip="同一商家多單或中途加單：派單卡逐單顯示（加單顯示總額的淨增加）。多商家組合單：派單卡只顯示一個總額。">?</span></span>
             <select data-act="feeMode">
               <option value="each" ${r.pooled ? '' : 'selected'}>逐單顯示</option>
               <option value="total" ${r.pooled ? 'selected' : ''}>只顯示總額（多商家組合）</option>
             </select></label>
-          ${r.pooled ? `<label class="field"><span class="lbl">派單總額 <span class="help" tabindex="0" data-tip="派單卡顯示的總預估外送費。無法得知各單拆分，補足以「總額 vs 各單法定最低合計」估算，為保守下限；實際以最低報酬保障補充明細為準。">?</span></span>
+          ${r.pooled ? `<label class="field"><span class="lbl">派單總額 <span class="help" tabindex="0" data-tip="派單卡顯示的總預估外送費。無法得知各單拆分，補足以「總額 vs 各單法定最低合計」估算，為保守下限；實際以 Uber 報酬明細為準。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="totalBase" value="${t.totalBase}" placeholder="例：120"><em>元</em></div></label>` : ''}
         </div>
         <div class="hint" style="margin:0 0 4px">每趟服務時間 = 取餐路段 + 各趟送達路段累計（2026/8/17 起，重疊時間重複計算）；中途加單自接受該單時起算。請依完成順序填寫。</div>` : ''}
@@ -569,11 +568,11 @@
         <table class="orders">
           <thead><tr>
             <th>#</th>
-            <th>狀態 <span class="help" tabindex="0" data-tip="不可歸責於你的取消：報酬不低於「已服務分鐘 ÷ 60 × 保障時薪」，無每筆最低保障（合約 §6g）。可歸責於你的取消：無報酬（§8d）。服務時間算到取消為止。">?</span></th>
+            <th>狀態 <span class="help" tabindex="0" data-tip="不可歸責於你的取消：報酬不低於「已服務分鐘 ÷ 60 × 保障時薪」，無每筆最低保障。可歸責於你的取消：無報酬。服務時間算到取消為止。">?</span></th>
             <th>派單基本報酬 <span class="help" tabindex="0" data-tip="派單卡上的預估基本外送費，已含基本報酬加成（Base+），不含差額補足與獎勵。中途加單請填派單卡顯示的淨增加金額。">?</span></th>
-            ${isStack ? `<th>接單時點 <span class="help" tabindex="0" data-tip="中途加單（合約 §7b、§7d）：首單接單後第幾分鐘接受這張追加單，該單服務時間自此起算。與首單同時派出則留空。">?</span></th>` : ''}
+            ${isStack ? `<th>接單時點 <span class="help" tabindex="0" data-tip="中途加單：首單接單後第幾分鐘接受這張追加單，該單服務時間自此起算。與首單同時派出則留空。">?</span></th>` : ''}
             <th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成（或取消）本趟的時間（分＋秒）。各路段不先取整，只對每單最終服務時間取整。' : '從接受派單到完成（或取消）該筆訂單的時間（分＋秒，含前往店家、等餐、送餐、找地址），可對照 App 行程費用紀錄填寫，會四捨五入至整分鐘。'}">?</span></th>
-            <th>服務時間 <span class="help" tabindex="0" data-tip="接受該單 → 完成本趟的分鐘數，四捨五入至整分鐘（未滿 30 秒捨去、30 秒以上進位，合約 §5），用於法定最低計算。">?</span></th>
+            <th>服務時間 <span class="help" tabindex="0" data-tip="接受該單 → 完成本趟的分鐘數，四捨五入至整分鐘（未滿 30 秒捨去、30 秒以上進位），用於法定最低計算。">?</span></th>
             <th>法定最低</th>
             <th>補足</th>
             <th>實得基本</th>
@@ -603,9 +602,9 @@
             <div class="unit"><input type="number" step="1" data-tf="adjust" value="${t.adjust}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">回程費用</span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="returnFee" value="${t.returnFee}" placeholder="0"><em>元</em></div></label>
-          <label class="field"><span class="lbl">過路費償還 <span class="help" tabindex="0" data-tip="提供貨運服務期間產生的道路、橋樑、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還（合約 §6d）。屬償還款，不計入法定最低保障。">?</span></span>
+          <label class="field"><span class="lbl">過路費償還 <span class="help" tabindex="0" data-tip="外送途中如有過路費等收費，可向 Uber Eats 申請償還（以 Uber 規定為準）。屬償還款，不計入法定最低保障。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="toll" value="${t.toll ?? ''}" placeholder="0"><em>元</em></div></label>
-          <label class="field"><span class="lbl">現金收款 <span class="help" tabindex="0" data-tip="現金單依 App 指定金額向收貨人收取的現金（不含小費）。屬代 Uber 收取的款項，不是收入，結算時自外送費抵銷（合約 §9）。">?</span></span>
+          <label class="field"><span class="lbl">現金收款 <span class="help" tabindex="0" data-tip="現金單向收貨人收取的現金（不含小費）。屬代 Uber 收取的款項，不是收入，結算時從外送費扣抵。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="cash" value="${t.cash ?? ''}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">備註</span>
             <input type="text" data-tf="note" value="${escapeHtml(t.note)}" placeholder="店家 / 區域"></label>
@@ -681,7 +680,7 @@
     $('#bCash').textContent = '−' + money(s.cash);
     $('#bInstantFee').textContent = '−' + money(s.instantFee);
     $('#bPayoutLabel').textContent = owe ? '預計倒欠 Uber' : '預計匯款金額';
-    $('#bPayoutNote').textContent = owe ? '差額構成交易債務，Uber 得自留存的卡片或帳戶扣款'
+    $('#bPayoutNote').textContent = owe ? '現金收款超過應付金額，差額需償還給 Uber'
       : ['總收入', hasCash && '現金收款', hasFee && '即時提領手續費'].filter(Boolean).join(' − ');
     $('#bPayout').textContent = money(Math.abs(s.payout));
   }
