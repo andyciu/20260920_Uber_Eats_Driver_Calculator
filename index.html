@@ -137,7 +137,7 @@
 
   .pickup-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pickup-row label.field { min-width: 200px; }
-  .trip-extras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .trip-extras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   @media (max-width: 760px) { .trip-extras { grid-template-columns: repeat(2, 1fr); } }
   .trip-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 
@@ -253,7 +253,7 @@
       </label>
     </div>
     <div class="tiers" id="tierList"></div>
-    <div class="hint">未設定階級則不計算趟次挑戰。挑戰獎勵不顯示於派單卡，會疊加於基本外送費之外。</div>
+    <div class="hint">未設定階級則不計算趟次挑戰。挑戰獎勵屬基本外送費以外的另行給付，不計入法定最低保障；於 App「機會」頁面或派單卡另行揭露，不會與基本外送費合併成單一金額。</div>
   </section>
 
   <!-- ===== 總計 ===== -->
@@ -297,7 +297,7 @@
         <div class="v" id="sPerOrder">$0</div>
       </div>
       <div class="stat" id="statTopup">
-        <div class="k">法定保障補足 <span class="help" tabindex="0" data-tip="派單基本報酬低於法定最低時，平台須補足之差額（Uber Eats 每 14 天核對一次，於週四存入 Uber 錢包）。">?</span></div>
+        <div class="k">法定保障補足 <span class="help" tabindex="0" data-tip="派單基本報酬低於法定最低時，平台須補足之差額。外送費每週支付；差額以每兩週為一期核算並支付，遇假日順延至下一個工作日。">?</span></div>
         <div class="v" id="sTopup">$0</div>
       </div>
     </div>
@@ -305,8 +305,7 @@
     <div class="breakdown">
       <table>
         <tbody>
-          <tr><td>基本外送費（派單卡金額合計）</td><td id="bBase">$0</td></tr>
-          <tr><td>基本報酬加成<span class="note">每小時加成 × 各趟服務時間</span></td><td id="bBoost">$0</td></tr>
+          <tr><td>基本外送費（派單卡金額合計）<span class="note">已含基本報酬加成</span></td><td id="bBase">$0</td></tr>
           <tr><td>法定基本報酬差額調整<span class="note">逐趟核算</span></td><td id="bTopup">$0</td></tr>
           <tr><td>小費<span class="note">全歸外送夥伴</span></td><td id="bTips">$0</td></tr>
           <tr><td>外送費調整 + 回程費用</td><td id="bAdj">$0</td></tr>
@@ -323,18 +322,19 @@
     <details class="rules">
       <summary>計算規則與資料來源（2026 年 9 月）</summary>
       <ul>
-        <li><b>基本外送費</b>：依預估外送服務期間、配送距離、當下訂單需求逐趟計算；派單卡顯示預估金額。</li>
+        <li><b>基本外送費</b>：依預估行駛距離、預估行駛時間、預估等待時間、取件及送達屬性等因素計算；派單卡顯示預估基本外送費（含基本報酬加成，不含差額補足）。</li>
         <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，未滿 30 秒不計、30 秒以上以 1 分鐘計。</li>
         <li><b>疊單／夾單</b>：「一趟行程」= 一個取件地點 + 一個送達地點。疊單會拆開後逐趟核算，每趟均須各自達到最低標準（例：三張疊單 $52／$45／$47，每趟不低於 45 元）。</li>
         <li><b>疊單時間分配（2026/8/17 起「重疊時間重複計算」）</b>：每趟行程的服務期間皆自「接受派單」起算至完成該趟。官網派單 D 範例：接單→取餐 15 分、→完成第一趟 10 分、→完成第二趟 7 分，則第一趟 = 15+10 = 25 分（法定最低 245×25÷60 = 102.1，派單 $52 → 補足 50.1）、第二趟 = 15+10+7 = 32 分（法定最低 130.7，派單 $72 → 補足 58.7）。</li>
         <li><b>金額進位</b>：法定最低保障金額先計算至小數點後第二位，再無條件進位至小數點後第一位。</li>
-        <li><b>基本報酬加成</b>：系統依即時供需於特定區域時段提供，公式為「每小時加成金額 × 該趟行程預估外送服務期間」（例：50 元/小時 × 30 分鐘 = 25 元）。疊單以其中每趟行程為計算基準，分別計算後加總。</li>
-        <li><b>補足差額</b>：Uber Eats 每 14 天核對一次，若低於法定最低保障金額，自動補足差額並於核對期間結束後的週四存入 Uber 錢包。</li>
-        <li><b>額外趟次挑戰</b>：疊加於基本外送費之外，派單卡不顯示；外送夥伴可自行決定是否參與。</li>
+        <li><b>基本報酬加成（Base+）</b>：系統依即時供需於特定區域時段自動加計，<b>已包含在派單卡顯示的預估基本外送費內</b>，屬於基本外送費的一部分（非另行獎勵），並計入法定最低保障的比較。因此請直接輸入派單卡金額，不需另外加計。</li>
+        <li><b>補足差額</b>：外送費每週支付；法定最低保障以每兩週為一期核算，低於法定最低時以「基本報酬差額調整費用」補足，並於最低報酬保障補充明細中逐項載明、每兩週支付一次。付款日遇臺灣公共假日順延至下一個工作日。</li>
+        <li><b>額外趟次挑戰</b>：屬基本外送費以外另行提供的獎金／獎勵，不計入法定最低保障；於 App「機會」頁面或派單卡另行揭露，不會與基本外送費合併顯示。外送夥伴可自行決定是否參與。</li>
         <li><b>小費</b>：消費者自願提供，金額全歸外送夥伴，派單卡不顯示。</li>
         <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
         <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
-        <li>來源：<a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
+        <li>來源：Uber Eats 外送合作夥伴條款（2026/7/21 生效）§1b、§5、§6、§7 ·
+          <a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
           <a href="https://www.bnext.com.tw/article/89738//taiwan-food-delivery-law-2026" target="_blank" rel="noopener">數位時代：2026 外送專法</a> ·
           <a href="https://www.justlaw.com.tw/ViewLawTxt.php?id=2033" target="_blank" rel="noopener">天秤座法律事務所：外送專法報酬、疊單解析</a></li>
         <li>本工具僅供估算，實際金額以 Uber 行程明細與週報酬明細為準。</li>
@@ -371,7 +371,7 @@
   // 單筆：minutes = 接單→完成的總分鐘；夾單：minutes = 該趟「路段」分鐘（上一站→完成本趟），pickupMin = 接受派單→領取餐點
   function newOrder() { return { id: uid(), base: '', minutes: '' }; }
   function newTrip(orderCount = 1) {
-    const t = { id: uid(), pickupMin: '', boostRate: '', tip: '', adjust: '', returnFee: '', note: '', orders: [] };
+    const t = { id: uid(), pickupMin: '', tip: '', adjust: '', returnFee: '', note: '', orders: [] };
     for (let i = 0; i < orderCount; i++) t.orders.push(newOrder());
     return t;
   }
@@ -416,28 +416,27 @@
     return t.orders.map(o => { cum += num(o.minutes); return stacked ? cum : num(o.minutes); });
   }
   function calcTrip(t) {
-    const r = { base: 0, minutes: 0, tripMinutes: 0, topup: 0, boost: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), orders: [] };
+    const r = { base: 0, minutes: 0, tripMinutes: 0, topup: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), orders: [] };
     const mins = orderMinutes(t);
-    const rate = num(t.boostRate);
     t.orders.forEach((o, i) => {
+      // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較（合約 §1b、§5）
       const base = num(o.base), m = mins[i];
       const legal = legalMinForOrder(m);
       const topup = Math.max(0, legal - base);
-      const boost = rate * m / 60; // 加成以每趟行程的服務期間為計算基準
-      r.orders.push({ base, mins: m, seg: num(o.minutes), legal, topup, boost, paid: base + topup });
-      r.base += base; r.minutes += m; r.topup += topup; r.boost += boost;
+      r.orders.push({ base, mins: m, seg: num(o.minutes), legal, topup, paid: base + topup });
+      r.base += base; r.minutes += m; r.topup += topup;
       r.tripMinutes = Math.max(r.tripMinutes, m);
     });
-    r.total = r.base + r.boost + r.topup + r.tip + r.adjust;
+    r.total = r.base + r.topup + r.tip + r.adjust;
     return r;
   }
   function calcAll() {
-    const s = { trips: state.trips.length, orders: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, boost: 0, topup: 0, tips: 0, adjust: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
+    const s = { trips: state.trips.length, orders: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
     state.trips.forEach(t => {
       const r = calcTrip(t);
       s.orders += t.orders.length;
       if (t.orders.length > 1) { s.stackTrips++; s.stackOrders += t.orders.length; }
-      s.minutes += r.minutes; s.base += r.base; s.boost += r.boost; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust;
+      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust;
     });
     // 趟次挑戰
     const achieved = state.tiers
@@ -456,7 +455,7 @@
       const next = state.tiers.map(t => num(t.trips)).filter(n => n > s.trips).sort((a, b) => a - b)[0];
       if (next) s.tierLabel = `再 ${next - s.trips} 趟達成下一階級`;
     }
-    s.total = s.base + s.boost + s.topup + s.tips + s.adjust + s.tier + s.other;
+    s.total = s.base + s.topup + s.tips + s.adjust + s.tier + s.other;
     return s;
   }
 
@@ -507,7 +506,7 @@
         <table class="orders">
           <thead><tr>
             <th>#</th>
-            <th>派單基本報酬</th>
+            <th>派單基本報酬 <span class="help" tabindex="0" data-tip="派單卡上的預估基本外送費，已含基本報酬加成（Base+），不含差額補足與獎勵。">?</span></th>
             <th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成本趟送達的分鐘數。' : '從接受派單到完成該筆訂單的分鐘數（含前往店家、等餐、送餐、找地址）。未滿 30 秒不計、30 秒以上以 1 分鐘計。'}">?</span></th>
             <th>服務時間 <span class="help" tabindex="0" data-tip="接受派單 → 完成本趟的累計分鐘數，用於法定最低與加成計算。">?</span></th>
             <th>法定最低</th>
@@ -531,8 +530,6 @@
         </table>
         </div>
         <div class="trip-extras">
-          <label class="field"><span class="lbl">基本報酬加成 <span class="help" tabindex="0" data-tip="該時段區域的每小時加成金額。加成以每趟行程為基準：每小時加成 × 該趟服務時間，夾單各趟分別計算後加總。">?</span></span>
-            <div class="unit"><input type="number" min="0" step="1" data-tf="boostRate" value="${t.boostRate}" placeholder="0"><em>元/時</em></div></label>
           <label class="field"><span class="lbl">小費</span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="tip" value="${t.tip}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">外送費調整</span>
@@ -595,7 +592,6 @@
     $('#statTopup').classList.toggle('warn', s.topup > 0);
 
     $('#bBase').textContent = money(s.base);
-    $('#bBoost').textContent = money(s.boost);
     $('#bTopup').textContent = money(s.topup);
     $('#bTips').textContent = money(s.tips);
     $('#bAdj').textContent = money(s.adjust);
@@ -611,7 +607,7 @@
   function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
   function tripFootHtml(r) {
-    return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 加成 <b class="mono">${money(r.boost)}</b> · 補足 <b class="mono">${money(r.topup)}</b></span>
+    return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 補足 <b class="mono">${money(r.topup)}</b></span>
       <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${money(r.total)}</span>`;
   }
 
@@ -710,18 +706,18 @@
   });
 
   $('#btnExport').addEventListener('click', () => {
-    const rows = [['派單', '行程', '派單基本報酬', '路段分鐘', '服務分鐘(累計)', '法定最低', '補足差額', '實得基本', '加成', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
+    const rows = [['派單', '行程', '派單基本報酬', '路段分鐘', '服務分鐘(累計)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
     state.trips.forEach((t, i) => {
       const r = calcTrip(t);
       t.orders.forEach((o, j) => {
         const ro = r.orders[j];
         rows.push([i + 1, j + 1, ro.base, ro.seg, ro.mins, ro.legal.toFixed(1), ro.topup.toFixed(1), ro.paid.toFixed(1),
-          ro.boost.toFixed(2), j === 0 ? r.tip : '', j === 0 ? num(t.adjust) : '', j === 0 ? num(t.returnFee) : '', j === 0 ? r.total.toFixed(1) : '', j === 0 ? t.note : '']);
+          j === 0 ? r.tip : '', j === 0 ? num(t.adjust) : '', j === 0 ? num(t.returnFee) : '', j === 0 ? r.total.toFixed(1) : '', j === 0 ? t.note : '']);
       });
     });
     const s = calcAll();
     rows.push([]);
-    rows.push(['總計', '', s.base.toFixed(1), '', s.minutes, '', s.topup.toFixed(1), '', s.boost.toFixed(2), s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；夾單派單 ${s.stackTrips}；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
+    rows.push(['總計', '', s.base.toFixed(1), '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；夾單派單 ${s.stackTrips}；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
