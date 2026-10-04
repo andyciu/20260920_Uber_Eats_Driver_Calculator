@@ -312,6 +312,13 @@
       </div>
     </div>
 
+    <div class="grid c2" style="margin-top:12px">
+      <label class="field">
+        <span class="lbl">即時提領手續費合計（選填） <span class="help" tabindex="0" data-tip="使用即時提領提前領款時，Uber 自提領金額扣除的手續費合計（合約 §6i）。屬自願加值服務費用，不影響報酬與法定最低，只減少實際入帳金額。費率以 App 顯示為準。">?</span></span>
+        <div class="unit"><input type="number" id="instantFee" min="0" step="1" placeholder="例：30"><em>元</em></div>
+      </label>
+    </div>
+
     <div class="breakdown">
       <table>
         <tbody>
@@ -324,6 +331,7 @@
           <tr><td>其他獎勵</td><td id="bOther">$0</td></tr>
           <tr class="total"><td>預估總收入</td><td id="bTotal">$0</td></tr>
           <tr class="cash" hidden><td>現金收款<span class="note">已在手上，結算時自外送費抵銷</span></td><td id="bCash">$0</td></tr>
+          <tr class="cash" hidden><td>即時提領手續費<span class="note">自提領金額扣除，不影響報酬</span></td><td id="bInstantFee">$0</td></tr>
           <tr class="payout" id="rowPayout" hidden><td><span id="bPayoutLabel">預計匯款金額</span><span id="bPayoutNote" class="note"></span></td><td id="bPayout">$0</td></tr>
         </tbody>
       </table>
@@ -350,6 +358,7 @@
         <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
         <li><b>過路費償還（合約 §1m、§6d）</b>：提供貨運服務期間產生的道路、橋樑、渡口、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還。屬代墊費用的償還款，不計入法定最低保障（§5）；計入預估總收入以便對照週報酬明細的入帳金額。</li>
         <li><b>現金單抵銷（合約 §9、§6e）</b>：現金單依 App 指定金額向收貨人收取的現金（不含小費）屬代 Uber Eats 收取的款項，於結算時自當期外送費抵銷，週報酬明細會列出抵銷項目。現金收款不是收入，不影響總收入與法定最低；預計匯款金額 = 預估總收入 − 現金收款。若當期外送費低於現金收款，差額構成你對 Uber Eats 的交易債務並遞延至清償，Uber Eats 得直接從你留存的卡片或銀行帳戶扣款，還款手續費由你負擔。現金的保管風險由你自行承擔。</li>
+        <li><b>即時提領手續費（合約 §6i）</b>：Uber Eats 得酌情提供即時提領功能，讓你在固定付款日前提前領款；若你選擇使用，Uber Eats 得依該功能約定的條款，直接自總提領金額扣除手續費。合約未載明費率，以 App 顯示為準。手續費屬自願加值服務費用，不影響報酬與法定最低，只減少實際入帳金額；預計匯款金額會再扣除此項。</li>
         <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
         <li>來源：Uber Eats 外送合作夥伴條款（2026/7/21 生效）§1b、§1f、§5、§6、§7、§8 ·
           <a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
@@ -377,7 +386,8 @@
     trips: [],
     tiers: [],
     tierMode: 'highest',
-    otherBonus: ''
+    otherBonus: '',
+    instantFee: ''
   };
   let nextId = 1;
 
@@ -474,7 +484,7 @@
     return r;
   }
   function calcAll() {
-    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, toll: 0, cash: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
+    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, toll: 0, cash: 0, tier: 0, tierLabel: '', other: num(state.otherBonus), instantFee: num(state.instantFee) };
     state.trips.forEach(t => {
       const r = calcTrip(t);
       s.orders += t.orders.length; s.cancelled += r.cancelled;
@@ -499,7 +509,8 @@
       if (next) s.tierLabel = `再 ${next - s.doneTrips} 趟達成下一階級`;
     }
     s.total = s.base + s.topup + s.tips + s.adjust + s.toll + s.tier + s.other;
-    s.payout = s.total - s.cash; // 負值 = 現金收款超過應付外送費，差額為對 Uber 的交易債務
+    // 實際入帳：扣除現金收款抵銷（§9）與即時提領手續費（§6i）；負值 = 現金收款超過應付外送費，差額為對 Uber 的交易債務
+    s.payout = s.total - s.cash - s.instantFee;
     return s;
   }
 
@@ -511,6 +522,7 @@
     $('#onlineHours').value = state.settings.onlineHours;
     $('#tierMode').value = state.tierMode;
     $('#otherBonus').value = state.otherBonus;
+    $('#instantFee').value = state.instantFee;
   }
 
   function renderTrips() {
@@ -660,14 +672,17 @@
     $('#bTierNote').textContent = s.tierLabel;
     $('#bOther').textContent = money(s.other);
     $('#bTotal').textContent = money(s.total);
-    // 現金收款：只在有填寫時顯示抵銷後的預計匯款
-    const hasCash = s.cash > 0, owe = s.payout < 0;
+    // 現金收款、即時提領手續費：只在有填寫時顯示扣除後的預計匯款
+    const hasCash = s.cash > 0, hasFee = s.instantFee > 0, owe = s.payout < 0;
     $('#bCash').closest('tr').hidden = !hasCash;
-    $('#rowPayout').hidden = !hasCash;
+    $('#bInstantFee').closest('tr').hidden = !hasFee;
+    $('#rowPayout').hidden = !(hasCash || hasFee);
     $('#rowPayout').classList.toggle('owe', owe);
     $('#bCash').textContent = '−' + money(s.cash);
+    $('#bInstantFee').textContent = '−' + money(s.instantFee);
     $('#bPayoutLabel').textContent = owe ? '預計倒欠 Uber' : '預計匯款金額';
-    $('#bPayoutNote').textContent = owe ? '差額構成交易債務，Uber 得自留存的卡片或帳戶扣款' : '總收入 − 現金收款';
+    $('#bPayoutNote').textContent = owe ? '差額構成交易債務，Uber 得自留存的卡片或帳戶扣款'
+      : ['總收入', hasCash && '現金收款', hasFee && '即時提領手續費'].filter(Boolean).join(' − ');
     $('#bPayout').textContent = money(Math.abs(s.payout));
   }
 
@@ -738,6 +753,7 @@
   });
   $('#tierMode').addEventListener('change', e => { state.tierMode = e.target.value; renderLight(); });
   $('#otherBonus').addEventListener('input', e => { state.otherBonus = e.target.value; renderLight(); });
+  $('#instantFee').addEventListener('input', e => { state.instantFee = e.target.value; renderLight(); });
 
   $('#tripList').addEventListener('input', e => {
     const tripEl = e.target.closest('.trip'); if (!tripEl) return;
@@ -801,7 +817,7 @@
   $('#btnClear').addEventListener('click', () => {
     if (!state.trips.length && !state.tiers.length) return;
     if (!confirm('確定要清除所有趟次與挑戰設定嗎？')) return;
-    state.trips = []; state.tiers = []; state.otherBonus = ''; state.settings.onlineHours = '';
+    state.trips = []; state.tiers = []; state.otherBonus = ''; state.instantFee = ''; state.settings.onlineHours = '';
     renderSettings(); renderAll(); toast('已清除');
   });
 
@@ -821,7 +837,8 @@
     const s = calcAll();
     rows.push([]);
     rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.toll, s.total.toFixed(1), s.cash, `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}` +
-      (s.cash ? `；${s.payout < 0 ? '預計倒欠 Uber' : '預計匯款'} ${Math.abs(s.payout).toFixed(1)}` : '')]);
+      (s.instantFee ? `；即時提領手續費 ${s.instantFee}` : '') +
+      (s.cash || s.instantFee ? `；${s.payout < 0 ? '預計倒欠 Uber' : '預計匯款'} ${Math.abs(s.payout).toFixed(1)}` : '')]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
