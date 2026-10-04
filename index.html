@@ -131,6 +131,9 @@
   table.orders th { color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
   table.orders td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
   table.orders input { padding: 6px 8px; font-size: 14px; min-width: 70px; }
+  .unit.dur { gap: 4px; }
+  .unit.dur input { flex: 0 0 auto; width: 64px; min-width: 0; }
+  .unit.dur input[data-part="s"] { width: 52px; }
   table.orders .topup { color: var(--warn); font-weight: 600; }
   table.orders .ok { color: var(--accent-dark); }
   .table-scroll { overflow-x: auto; }
@@ -327,7 +330,7 @@
       <summary>計算規則與資料來源（2026 年 9 月）</summary>
       <ul>
         <li><b>基本外送費</b>：依預估行駛距離、預估行駛時間、預估等待時間、取件及送達屬性等因素計算；派單卡顯示預估基本外送費（含基本報酬加成，不含差額補足）。</li>
-        <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，未滿 30 秒不計、30 秒以上以 1 分鐘計。</li>
+        <li><b>法定最低保障</b>：每筆訂單基本報酬不得低於「服務分鐘 ÷ 60 × 最低時薪 × 1.25」，且不得低於 NT$45。2026 年最低時薪 196 元 → 保障時薪 245 元。時間自「接受訂單」起算至「完成該筆訂單」，取整至最接近的分鐘數（未滿 30 秒捨去、30 秒以上進位，合約 §5）；夾單各路段不先取整，只對每單最終的服務時間取整。時間欄位可填到秒，對照 App 行程費用紀錄輸入；括號內為取整前的實際時間。</li>
         <li><b>疊單／夾單</b>：「一趟行程」= 一個取件地點 + 一個送達地點。疊單會拆開後逐趟核算，每趟均須各自達到最低標準（例：三張疊單 $52／$45／$47，每趟不低於 45 元）。</li>
         <li><b>疊單時間分配（2026/8/17 起「重疊時間重複計算」）</b>：每趟行程的服務期間皆自「接受派單」起算至完成該趟。官網派單 D 範例：接單→取餐 15 分、→完成第一趟 10 分、→完成第二趟 7 分，則第一趟 = 15+10 = 25 分（法定最低 245×25÷60 = 102.1，派單 $52 → 補足 50.1）、第二趟 = 15+10+7 = 32 分（法定最低 130.7，派單 $72 → 補足 58.7）。</li>
         <li><b>中途加單（合約 §7b、§7d）</b>：接單後才收到的追加請求，派單卡顯示總預估外送費的「淨增加」金額；該單服務期間自接受該追加請求時起算（§1f），請在「接單時點」填入首單接單後第幾分鐘接受。</li>
@@ -425,27 +428,32 @@
   const orderStatus = (o) => STATUS[o.status] ? o.status : 'done';
   const isPooled = (t) => t.orders.length > 1 && t.feeMode === 'total';
   const doneTripCount = () => state.trips.filter(t => t.orders.some(o => orderStatus(o) === 'done')).length;
-  // 每趟行程的服務時間：單筆 = 輸入的總分鐘；夾單 = 接單→取餐 + 各路段累計至完成本趟（重疊時間重複計入），
-  // 中途加單則自接受該單時起算（合約 §1f、§7b、§7d）
-  function orderMinutes(t) {
+  // 時間欄位以「分鐘（可含小數）」儲存，計算時一律換成整數秒，避免浮點誤差
+  const toSec = (v) => Math.round(num(v) * 60);
+  const fmtDur = (sec) => `${Math.floor(sec / 60)} 分 ${sec % 60} 秒`;
+  // 合約 §5：外送服務期間取整至最接近之分鐘數（未滿 30 秒捨去、30 秒以上進位）
+  const roundMin = (sec) => Math.floor((sec + 30) / 60);
+  // 每趟行程的服務時間（秒）：單筆 = 輸入的總時間；夾單 = 接單→取餐 + 各路段累計至完成本趟（重疊時間重複計入），
+  // 中途加單則自接受該單時起算（合約 §1f、§7b、§7d）。各路段不先取整，只對每單最終的服務時間取整
+  function orderSeconds(t) {
     const stacked = t.orders.length > 1;
-    let cum = stacked ? num(t.pickupMin) : 0;
+    let cum = stacked ? toSec(t.pickupMin) : 0;
     return t.orders.map((o, i) => {
-      cum += num(o.minutes);
-      return stacked ? Math.max(0, cum - (i ? num(o.acceptAt) : 0)) : num(o.minutes);
+      cum += toSec(o.minutes);
+      return stacked ? Math.max(0, cum - (i ? toSec(o.acceptAt) : 0)) : toSec(o.minutes);
     });
   }
   function calcTrip(t) {
     const pooled = isPooled(t);
     const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), orders: [] };
-    const mins = orderMinutes(t);
+    const secs = orderSeconds(t);
     t.orders.forEach((o, i) => {
       // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較（合約 §1b、§5）
-      const status = orderStatus(o), m = mins[i];
+      const status = orderStatus(o), m = roundMin(secs[i]);
       const base = pooled ? 0 : num(o.base);
       const legal = legalMinForOrder(m, status);
       const topup = pooled ? 0 : Math.max(0, legal - base);
-      r.orders.push({ base, mins: m, seg: num(o.minutes), acceptAt: i ? num(o.acceptAt) : 0, status, legal, topup, paid: base + topup });
+      r.orders.push({ base, mins: m, secs: secs[i], segSec: toSec(o.minutes), acceptSec: i ? toSec(o.acceptAt) : 0, status, legal, topup, paid: base + topup });
       r.base += base; r.minutes += m; r.legal += legal; r.topup += topup;
       if (status !== 'done') r.cancelled++;
     });
@@ -524,7 +532,7 @@
         ${isStack ? `
         <div class="pickup-row">
           <label class="field"><span class="lbl">接受派單 → 領取餐點 <span class="help" tabindex="0" data-tip="夾單共用的取餐路段：從接受派單到領取餐點的分鐘數。此段時間會重複計入本派單的每一趟行程。">?</span></span>
-            <div class="unit"><input type="number" min="0" step="1" data-tf="pickupMin" value="${t.pickupMin}" placeholder="例：15"><em>分</em></div></label>
+            ${durInputHtml('data-tf', 'pickupMin', t.pickupMin, '例：15')}</label>
           <label class="field"><span class="lbl">派單金額 <span class="help" tabindex="0" data-tip="同一商家多單或中途加單：派單卡逐單顯示（加單顯示總額的淨增加）。多商家組合單：派單卡只顯示一個總額（合約 §7c）。">?</span></span>
             <select data-act="feeMode">
               <option value="each" ${r.pooled ? '' : 'selected'}>逐單顯示</option>
@@ -541,8 +549,8 @@
             <th>狀態 <span class="help" tabindex="0" data-tip="不可歸責於你的取消：報酬不低於「已服務分鐘 ÷ 60 × 保障時薪」，無每筆最低保障（合約 §6g）。可歸責於你的取消：無報酬（§8d）。服務時間算到取消為止。">?</span></th>
             <th>派單基本報酬 <span class="help" tabindex="0" data-tip="派單卡上的預估基本外送費，已含基本報酬加成（Base+），不含差額補足與獎勵。中途加單請填派單卡顯示的淨增加金額。">?</span></th>
             ${isStack ? `<th>接單時點 <span class="help" tabindex="0" data-tip="中途加單（合約 §7b、§7d）：首單接單後第幾分鐘接受這張追加單，該單服務時間自此起算。與首單同時派出則留空。">?</span></th>` : ''}
-            <th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成（或取消）本趟的分鐘數。' : '從接受派單到完成（或取消）該筆訂單的分鐘數（含前往店家、等餐、送餐、找地址）。未滿 30 秒不計、30 秒以上以 1 分鐘計。'}">?</span></th>
-            <th>服務時間 <span class="help" tabindex="0" data-tip="接受該單 → 完成本趟的分鐘數，用於法定最低計算。">?</span></th>
+            <th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成（或取消）本趟的時間（分＋秒）。各路段不先取整，只對每單最終服務時間取整。' : '從接受派單到完成（或取消）該筆訂單的時間（分＋秒，含前往店家、等餐、送餐、找地址），可對照 App 行程費用紀錄填寫，會四捨五入至整分鐘。'}">?</span></th>
+            <th>服務時間 <span class="help" tabindex="0" data-tip="接受該單 → 完成本趟的分鐘數，四捨五入至整分鐘（未滿 30 秒捨去、30 秒以上進位，合約 §5），用於法定最低計算。">?</span></th>
             <th>法定最低</th>
             <th>補足</th>
             <th>實得基本</th>
@@ -556,8 +564,8 @@
                   ${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${k === ro.status ? 'selected' : ''}>${v}</option>`).join('')}
                 </select></td>
                 <td>${r.pooled ? '<span class="hint">合併計價</span>' : `<div class="unit"><input type="number" min="0" step="1" data-f="base" value="${o.base}" placeholder="例：52"><em>元</em></div>`}</td>
-                ${isStack ? `<td>${i ? `<div class="unit"><input type="number" min="0" step="1" data-f="acceptAt" value="${o.acceptAt ?? ''}" placeholder="0"><em>分</em></div>` : '<span class="hint">0 分</span>'}</td>` : ''}
-                <td><div class="unit"><input type="number" min="0" step="1" data-f="minutes" value="${o.minutes}" placeholder="${isStack ? '例：10' : '例：25'}"><em>分</em></div></td>
+                ${isStack ? `<td>${i ? durInputHtml('data-f', 'acceptAt', o.acceptAt, '0') : '<span class="hint">0 分</span>'}</td>` : ''}
+                <td>${durInputHtml('data-f', 'minutes', o.minutes, isStack ? '例：10' : '例：25')}</td>
                 ${orderCellsHtml(ro, r.pooled)}
               </tr>`;
             }).join('')}
@@ -647,10 +655,23 @@
     return `<span>服務時間合計 <b class="mono">${fmt(r.minutes, 0)}</b> 分 · 補足 <b class="mono">${money(r.topup)}</b>${r.cancelled ? ` · 取消 <b class="mono">${r.cancelled}</b> 單` : ''}</span>
       <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${money(r.total)}</span>`;
   }
+  // 分＋秒兩格共同對應一個以分鐘儲存的值；attr 為 data-f（訂單欄位）或 data-tf（趟次欄位）
+  function durInputHtml(attr, key, v, ph) {
+    const sec = v === '' || v == null ? null : toSec(v);
+    const m = sec == null ? '' : Math.floor(sec / 60), s = sec ? sec % 60 || '' : '';
+    return `<div class="unit dur" ${attr}="${key}">` +
+      `<input type="number" min="0" step="1" data-part="m" value="${m}" placeholder="${ph}"><em>分</em>` +
+      `<input type="number" min="0" max="59" step="1" data-part="s" value="${s}" placeholder="0"><em>秒</em></div>`;
+  }
+  function durValue(dur) {
+    const m = $('[data-part="m"]', dur).value, s = $('[data-part="s"]', dur).value;
+    return m === '' && s === '' ? '' : String(num(m) + num(s) / 60);
+  }
   const topupCellHtml = (topup) => `<td class="num ${topup > 0 ? 'topup' : 'ok'}">${topup > 0 ? '+' + money(topup) : '—'}</td>`;
   // 各單的計算欄位：服務時間、法定最低、補足、實得基本（多商家組合單於表尾合併計算）
   function orderCellsHtml(ro, pooled) {
-    return `<td class="num">${fmt(ro.mins, 0)} 分</td><td class="num">${money(ro.legal)}</td>` +
+    const raw = ro.secs % 60 ? `<span class="hint" style="margin-left:4px">（${fmtDur(ro.secs)}）</span>` : '';
+    return `<td class="num">${ro.mins} 分${raw}</td><td class="num">${money(ro.legal)}</td>` +
       (pooled ? '<td class="num">—</td><td class="num">—</td>' : `${topupCellHtml(ro.topup)}<td class="num"><b>${money(ro.paid)}</b></td>`);
   }
   function poolCellsHtml(r, isStack) {
@@ -696,12 +717,15 @@
   $('#tripList').addEventListener('input', e => {
     const tripEl = e.target.closest('.trip'); if (!tripEl) return;
     const t = state.trips.find(x => x.id === +tripEl.dataset.id); if (!t) return;
-    if (e.target.dataset.f) {
+    // 分＋秒欄位：欄位名稱掛在外層 .dur 上，值合併為分鐘
+    const dur = e.target.closest('.dur');
+    const src = dur || e.target, value = dur ? durValue(dur) : e.target.value;
+    if (src.dataset.f) {
       const tr = e.target.closest('tr');
       const o = t.orders.find(x => x.id === +tr.dataset.oid); if (!o) return;
-      o[e.target.dataset.f] = e.target.value;
-    } else if (e.target.dataset.tf) {
-      t[e.target.dataset.tf] = e.target.value;
+      o[src.dataset.f] = value;
+    } else if (src.dataset.tf) {
+      t[src.dataset.tf] = value;
     } else return;
     refreshTripRow(tripEl, t);
     renderLight();
@@ -757,21 +781,21 @@
   });
 
   $('#btnExport').addEventListener('click', () => {
-    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段分鐘', '服務分鐘(累計)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
+    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
     state.trips.forEach((t, i) => {
       const r = calcTrip(t);
       t.orders.forEach((o, j) => {
         const ro = r.orders[j], first = j === 0;
         // 多商家組合單只有總額：派單金額、補足、實得記在該派單第一列
         const pool = (v) => r.pooled ? (first ? v.toFixed(1) : '') : null;
-        rows.push([i + 1, j + 1, STATUS[ro.status], r.pooled ? '總額' : '逐單', pool(r.base) ?? ro.base, ro.acceptAt, ro.seg, ro.mins, ro.legal.toFixed(1),
+        rows.push([i + 1, j + 1, STATUS[ro.status], r.pooled ? '總額' : '逐單', pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), fmtDur(ro.segSec), fmtDur(ro.secs), ro.mins, ro.legal.toFixed(1),
           pool(r.topup) ?? ro.topup.toFixed(1), pool(r.paid) ?? ro.paid.toFixed(1),
           first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.total.toFixed(1) : '', first ? t.note : '']);
       });
     });
     const s = calcAll();
     rows.push([]);
-    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
+    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
