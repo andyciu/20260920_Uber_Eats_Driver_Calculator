@@ -140,7 +140,7 @@
 
   .pickup-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
   .pickup-row label.field { min-width: 200px; }
-  .trip-extras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .trip-extras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
   @media (max-width: 760px) { .trip-extras { grid-template-columns: repeat(2, 1fr); } }
   .trip-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 
@@ -316,6 +316,7 @@
           <tr><td>法定基本報酬差額調整<span class="note">逐趟核算</span></td><td id="bTopup">$0</td></tr>
           <tr><td>小費<span class="note">全歸外送夥伴</span></td><td id="bTips">$0</td></tr>
           <tr><td>外送費調整 + 回程費用</td><td id="bAdj">$0</td></tr>
+          <tr><td>過路費償還<span class="note">實報實銷，不計入法定最低</span></td><td id="bToll">$0</td></tr>
           <tr><td>額外趟次挑戰獎勵<span id="bTierNote" class="note"></span></td><td id="bTier">$0</td></tr>
           <tr><td>其他獎勵</td><td id="bOther">$0</td></tr>
           <tr class="total"><td>預估總收入</td><td id="bTotal">$0</td></tr>
@@ -342,6 +343,7 @@
         <li><b>額外趟次挑戰</b>：屬基本外送費以外另行提供的獎金／獎勵，不計入法定最低保障；於 App「機會」頁面或派單卡另行揭露，不會與基本外送費合併顯示。外送夥伴可自行決定是否參與。</li>
         <li><b>小費</b>：消費者自願提供，金額全歸外送夥伴，派單卡不顯示。</li>
         <li><b>其他費用</b>：回程費用（如適用）、外送費調整（消費者更改送達地址時可能產生）。</li>
+        <li><b>過路費償還（合約 §1m、§6d）</b>：提供貨運服務期間產生的道路、橋樑、渡口、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還。屬代墊費用的償還款，不計入法定最低保障（§5）；計入預估總收入以便對照週報酬明細的入帳金額。</li>
         <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
         <li>來源：Uber Eats 外送合作夥伴條款（2026/7/21 生效）§1b、§1f、§5、§6、§7、§8 ·
           <a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
@@ -384,7 +386,7 @@
   const STATUS = { done: '完成', cancelNA: '取消（不可歸責）', cancelA: '取消（可歸責）' };
   function newOrder() { return { id: uid(), base: '', minutes: '', acceptAt: '', status: 'done' }; }
   function newTrip(orderCount = 1) {
-    const t = { id: uid(), pickupMin: '', feeMode: 'each', totalBase: '', tip: '', adjust: '', returnFee: '', note: '', orders: [] };
+    const t = { id: uid(), pickupMin: '', feeMode: 'each', totalBase: '', tip: '', adjust: '', returnFee: '', toll: '', note: '', orders: [] };
     for (let i = 0; i < orderCount; i++) t.orders.push(newOrder());
     return t;
   }
@@ -445,7 +447,7 @@
   }
   function calcTrip(t) {
     const pooled = isPooled(t);
-    const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), orders: [] };
+    const r = { pooled, base: 0, minutes: 0, legal: 0, topup: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), orders: [] };
     const secs = orderSeconds(t);
     t.orders.forEach((o, i) => {
       // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較（合約 §1b、§5）
@@ -460,16 +462,17 @@
     // 多商家組合單（§7c）只顯示總額、無法得知各單拆分：以「總額 vs 各單法定最低合計」估算，為補足金額的保守下限
     if (pooled) { r.base = num(t.totalBase); r.topup = Math.max(0, r.legal - r.base); }
     r.paid = r.base + r.topup;
-    r.total = r.paid + r.tip + r.adjust;
+    // 過路費屬償還款，不參與法定最低比較（合約 §5、§6d），僅加入小計
+    r.total = r.paid + r.tip + r.adjust + r.toll;
     return r;
   }
   function calcAll() {
-    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
+    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, tips: 0, adjust: 0, toll: 0, tier: 0, tierLabel: '', other: num(state.otherBonus) };
     state.trips.forEach(t => {
       const r = calcTrip(t);
       s.orders += t.orders.length; s.cancelled += r.cancelled;
       if (t.orders.length > 1) { s.stackTrips++; s.stackOrders += t.orders.length; }
-      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust;
+      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.tips += r.tip; s.adjust += r.adjust; s.toll += r.toll;
     });
     // 趟次挑戰：只計入至少完成一單的派單
     const achieved = state.tiers
@@ -488,7 +491,7 @@
       const next = state.tiers.map(t => num(t.trips)).filter(n => n > s.doneTrips).sort((a, b) => a - b)[0];
       if (next) s.tierLabel = `再 ${next - s.doneTrips} 趟達成下一階級`;
     }
-    s.total = s.base + s.topup + s.tips + s.adjust + s.tier + s.other;
+    s.total = s.base + s.topup + s.tips + s.adjust + s.toll + s.tier + s.other;
     return s;
   }
 
@@ -580,6 +583,8 @@
             <div class="unit"><input type="number" step="1" data-tf="adjust" value="${t.adjust}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">回程費用</span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="returnFee" value="${t.returnFee}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">過路費償還 <span class="help" tabindex="0" data-tip="提供貨運服務期間產生的道路、橋樑、隧道、機場等收費，在採取有效率路線且無合理替代路線時由 Uber Eats 償還（合約 §6d）。屬償還款，不計入法定最低保障。">?</span></span>
+            <div class="unit"><input type="number" min="0" step="1" data-tf="toll" value="${t.toll ?? ''}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">備註</span>
             <input type="text" data-tf="note" value="${escapeHtml(t.note)}" placeholder="店家 / 區域"></label>
         </div>
@@ -640,6 +645,7 @@
     $('#bTopup').textContent = money(s.topup);
     $('#bTips').textContent = money(s.tips);
     $('#bAdj').textContent = money(s.adjust);
+    $('#bToll').textContent = money(s.toll);
     $('#bTier').textContent = money(s.tier);
     $('#bTierNote').textContent = s.tierLabel;
     $('#bOther').textContent = money(s.other);
@@ -781,7 +787,7 @@
   });
 
   $('#btnExport').addEventListener('click', () => {
-    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '本派單小計', '備註']];
+    const rows = [['派單', '行程', '狀態', '計價方式', '派單基本報酬', '接單時點', '路段時間', '服務時間(實際)', '服務分鐘(取整)', '法定最低', '補足差額', '實得基本', '小費', '外送費調整', '回程費用', '過路費償還', '本派單小計', '備註']];
     state.trips.forEach((t, i) => {
       const r = calcTrip(t);
       t.orders.forEach((o, j) => {
@@ -790,12 +796,12 @@
         const pool = (v) => r.pooled ? (first ? v.toFixed(1) : '') : null;
         rows.push([i + 1, j + 1, STATUS[ro.status], r.pooled ? '總額' : '逐單', pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), fmtDur(ro.segSec), fmtDur(ro.secs), ro.mins, ro.legal.toFixed(1),
           pool(r.topup) ?? ro.topup.toFixed(1), pool(r.paid) ?? ro.paid.toFixed(1),
-          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.total.toFixed(1) : '', first ? t.note : '']);
+          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? r.total.toFixed(1) : '', first ? t.note : '']);
       });
     });
     const s = calcAll();
     rows.push([]);
-    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
+    rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.toll, s.total.toFixed(1), `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}`]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
