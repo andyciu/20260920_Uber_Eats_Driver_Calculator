@@ -192,6 +192,14 @@
   dialog.dialog h3 { margin: 0 0 8px; font-size: 16px; }
   dialog.dialog p { margin: 0 0 16px; font-size: 14px; color: var(--muted); }
   .dialog-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .menu { position: relative; }
+  .menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; min-width: 200px; max-width: calc(100vw - 32px); display: flex; flex-direction: column; padding: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+  .menu-list[hidden] { display: none; }
+  .menu-list.to-left { left: 0; right: auto; }
+  .menu-list button { border: 0; background: none; text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 14px; white-space: nowrap; }
+  .menu-list button:hover, .menu-list button:focus-visible { background: var(--card-2); }
+  .menu-list small { display: block; color: var(--muted); font-size: 12px; }
+  .menu-list hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -204,9 +212,18 @@
     <div class="header-actions">
       <button id="btnInstall" class="sm" hidden>📲 安裝 App</button>
       <button id="btnTheme" class="sm" title="切換深色 / 淺色">🌓 主題</button>
-      <button id="btnImport" class="sm">⬆ 匯入 CSV</button>
+      <div class="menu">
+        <button id="btnData" class="sm" aria-haspopup="true" aria-expanded="false" aria-controls="dataMenu">💾 資料 ▾</button>
+        <div class="menu-list" id="dataMenu" hidden>
+          <button id="btnExport">⬇ 匯出 CSV<small>派單明細，可用 Excel 開啟</small></button>
+          <button id="btnImport">⬆ 匯入 CSV<small>讀回派單，可取代或附加</small></button>
+          <hr>
+          <button id="btnBackup">📦 備份（JSON）<small>全部資料，含參數與挑戰</small></button>
+          <button id="btnRestore">♻ 還原（JSON）<small>以備份取代目前全部資料</small></button>
+        </div>
+      </div>
       <input type="file" id="importFile" accept=".csv,text/csv" hidden>
-      <button id="btnExport" class="sm">⬇ 匯出 CSV</button>
+      <input type="file" id="restoreFile" accept=".json,application/json" hidden>
       <button id="btnClear" class="sm danger">🗑 清除全部</button>
     </div>
   </header>
@@ -435,20 +452,46 @@
   function load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        state = Object.assign(state, parsed);
-        state.settings = Object.assign({ minWage: 196, multiplier: 1.25, minPerOrder: 45, onlineHours: '' }, parsed.settings || {});
-        state.trips = Array.isArray(parsed.trips) ? parsed.trips : [];
-        state.tiers = Array.isArray(parsed.tiers) ? parsed.tiers : [];
-        // 重新編 id，避免與載入資料衝突
-        let maxId = 0;
-        state.trips.forEach(t => { maxId = Math.max(maxId, t.id || 0); (t.orders || []).forEach(o => maxId = Math.max(maxId, o.id || 0)); });
-        state.tiers.forEach(t => maxId = Math.max(maxId, t.id || 0));
-        nextId = maxId + 1;
-      }
+      if (raw) state = normalizeState(JSON.parse(raw));
     } catch (e) { /* ignore */ }
+  }
+  // 把載入或還原的資料整理成完整結構：補齊舊版缺少的欄位、重新編 id。
+  // 數字欄位會直接插入 HTML，只接受數字（或空白），選項欄位只接受已知值
+  const DEFAULT_SETTINGS = { minWage: 196, multiplier: 1.25, minPerOrder: 45, onlineHours: '' };
+  const obj = (v) => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  const cleanNum = (v, dflt = '') => v === '' || v == null || !Number.isFinite(Number(v)) || (typeof v !== 'number' && typeof v !== 'string') ? dflt : v;
+  const oneOf = (v, list, dflt) => list.includes(v) ? v : dflt;
+  function cleanFields(src, base, numKeys) {
+    const s = obj(src);
+    numKeys.forEach(k => { base[k] = cleanNum(s[k], base[k]); });
+    return base;
+  }
+  function normalizeState(raw) {
+    const p = obj(raw), set = obj(p.settings);
+    nextId = 1;
+    const trips = (Array.isArray(p.trips) ? p.trips : []).map(src => {
+      const s = obj(src);
+      const t = cleanFields(s, newTrip(0), ['pickupMin', 'totalTime', 'totalBase', 'tip', 'adjust', 'returnFee', 'toll', 'cash']);
+      t.timeMode = oneOf(s.timeMode, ['segments', 'total'], 'segments');
+      t.feeMode = oneOf(s.feeMode, ['each', 'total'], 'each');
+      t.lastDelivered = /^(order|unknown|\d+)$/.test(String(s.lastDelivered)) ? String(s.lastDelivered) : 'order';
+      t.note = typeof s.note === 'string' ? s.note : '';
+      t.orders = (Array.isArray(s.orders) ? s.orders : []).map(so => {
+        const o = cleanFields(so, newOrder(), ['base', 'minutes', 'acceptAt']);
+        o.status = oneOf(obj(so).status, Object.keys(STATUS), 'done');
+        return o;
+      });
+      if (!t.orders.length) t.orders.push(newOrder());
+      return t;
+    });
+    return {
+      settings: Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map(k => [k, cleanNum(set[k], DEFAULT_SETTINGS[k])])),
+      trips,
+      tiers: (Array.isArray(p.tiers) ? p.tiers : []).map(src => cleanFields(src, newTier(), ['trips', 'bonus'])),
+      tierMode: oneOf(p.tierMode, ['highest', 'sum'], 'highest'),
+      otherBonus: cleanNum(p.otherBonus),
+      instantFee: cleanNum(p.instantFee)
+    };
   }
 
   // ---------- 計算 ----------
@@ -938,13 +981,17 @@
       (s.instantFee ? `；即時提領手續費 ${s.instantFee}` : '') +
       (s.cash || s.instantFee ? `；${s.payout < 0 ? '預計倒欠 Uber' : '預計匯款'} ${Math.abs(s.payout).toFixed(1)}` : '')]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `ubereats-earnings-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click(); URL.revokeObjectURL(a.href);
+    download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `ubereats-earnings-${today()}.csv`);
     toast('已匯出 CSV');
   });
+  // 檔名用本地日期（toISOString 是 UTC，台灣凌晨 0–8 點會變成前一天）
+  const today = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  function download(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click(); URL.revokeObjectURL(a.href);
+  }
 
   // ---------- 匯入 CSV ----------
   // 讀回本工具匯出的 CSV（欄位以標題名稱對應）：只讀輸入欄位，計算欄位載入後依目前參數重算；參數設定與趟次挑戰不在 CSV 內
@@ -1075,6 +1122,47 @@
     renderAll();
     toast(`已匯入 ${trips.length} 張派單`);
   });
+
+  // ---------- 備份／還原（JSON） ----------
+  // 完整備份 state（不含主題，主題屬於裝置偏好）；外層標記 app 與版本，避免誤選其他檔案、方便日後轉換格式
+  const BACKUP_APP = 'ue-driver-calc', BACKUP_VERSION = 1;
+  $('#btnBackup').addEventListener('click', () => {
+    const backup = { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: new Date().toISOString(), data: state };
+    download(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }), `ubereats-backup-${today()}.json`);
+    toast('已下載備份');
+  });
+  const restoreInput = $('#restoreFile');
+  $('#btnRestore').addEventListener('click', () => restoreInput.click());
+  restoreInput.addEventListener('change', async () => {
+    const file = restoreInput.files[0];
+    restoreInput.value = '';
+    if (!file) return;
+    let backup;
+    try {
+      backup = JSON.parse(await file.text());
+      if (obj(backup).app !== BACKUP_APP) throw new Error('不是本工具的備份檔');
+      if (!(backup.version <= BACKUP_VERSION)) throw new Error('備份來自較新版本，請先重新整理頁面更新後再試');
+    } catch (e) { alert('還原失敗：' + (e instanceof SyntaxError ? '檔案不是有效的 JSON' : e.message)); return; }
+    const data = obj(backup.data), n = Array.isArray(data.trips) ? data.trips.length : 0;
+    const when = Number.isNaN(Date.parse(backup.exportedAt)) ? '' : new Date(backup.exportedAt).toLocaleString('zh-TW', { hour12: false });
+    if (!confirm(`將以備份${when ? `（${when}）` : ''}取代目前全部資料，包含 ${n} 張派單、參數設定與趟次挑戰。確定嗎？`)) return;
+    state = normalizeState(data);
+    renderSettings(); renderAll();
+    toast('已還原備份');
+  });
+
+  // 資料選單：點選項目、點選單外或按 Esc 時收合
+  const dataBtn = $('#btnData'), dataMenu = $('#dataMenu');
+  function setDataMenu(open) {
+    dataMenu.hidden = !open; dataBtn.setAttribute('aria-expanded', String(open));
+    // 預設靠右對齊按鈕；按鈕在畫面左側（手機換行時）左邊空間不足就改成靠左
+    dataMenu.classList.remove('to-left');
+    if (open && dataMenu.getBoundingClientRect().left < 8) dataMenu.classList.add('to-left');
+  }
+  dataBtn.addEventListener('click', () => setDataMenu(dataMenu.hidden));
+  dataMenu.addEventListener('click', e => { if (e.target.closest('button')) setDataMenu(false); });
+  document.addEventListener('click', e => { if (!e.target.closest('.menu')) setDataMenu(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !dataMenu.hidden) { setDataMenu(false); dataBtn.focus(); } });
 
   // 主題
   const THEME_KEY = 'ue-driver-calc-theme';
