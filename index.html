@@ -125,6 +125,7 @@
   .badge.stack { background: var(--info-soft); color: #3b5bdb; }
   :root[data-theme="dark"] .badge.stack, :root:not([data-theme="light"]) .badge.stack { color: #8fa8ff; }
   .badge.warn { background: var(--warn-soft); color: var(--warn); }
+  .badge.muted { background: var(--card-2); color: var(--muted); border: 1px solid var(--border); }
   .trip-head .subtotal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
   .trip-head .subtotal small { font-weight: 400; color: var(--muted); font-size: 12px; margin-right: 4px; }
 
@@ -374,7 +375,7 @@
         <li><b>疊單／夾單</b>：「一趟行程」= 一個取件地點 + 一個送達地點。疊單會拆開後逐趟核算，每趟均須各自達到最低標準（例：三張疊單 $52／$45／$47，每趟不低於 45 元）。</li>
         <li><b>疊單時間分配（2026/8/17 起「重疊時間重複計算」）</b>：每趟行程的服務期間皆自「接受派單」起算至完成該趟。官網派單 D 範例：接單→取餐 15 分、→完成第一趟 10 分、→完成第二趟 7 分，則第一趟 = 15+10 = 25 分（法定最低 245×25÷60 = 102.1，派單 $52 → 補足 50.1）、第二趟 = 15+10+7 = 32 分（法定最低 130.7，派單 $72 → 補足 58.7）。</li>
         <li><b>中途加單</b>：接單後才收到的追加訂單，派單卡顯示的是增加的金額；該單服務時間自接受該追加訂單時起算，請在「接單時點」填入首單接單後第幾分鐘接受。</li>
-        <li><b>只知道總時間（估算）</b>：App 只顯示本趟總時間時，夾單可改用估算模式，輸入總時間與各單接單時點，並選擇送達順序（依接單順序、指定哪一單最後送達，或不確定）。最後送達那單的服務時間 = 總時間 − 接單時點；其餘各單送達時間未知，最短算到加單時仍須在途的時間（加單時一定還有更早接的單在送）、最長算到總時間，服務時間、法定最低與補足都以範圍顯示。選「不確定」時，每一單都可能最後送達，範圍取所有情況中最寬者。總計以補足最少的情況（下限）計入，並標示最多可能的金額，可拿來對照 Uber 報酬明細。</li>
+        <li><b>只知道總時間（估算）</b>：App 只顯示本趟總時間時，夾單可改用估算模式，輸入總時間與各單接單時點，並選擇送達順序（依接單順序、指定哪一單最後送達，或不確定）。最後送達那單的服務時間 = 總時間 − 接單時點；其餘各單送達時間未知，最短算到加單時仍須在途的時間（加單時一定還有更早接的單在送）、最長算到總時間，這是可能範圍；點估計則取你單筆派單服務時間的中位數（沒有單筆紀錄時用 24 分鐘），並限制在可能範圍內。選「不確定」時，範圍取每一單都可能最後送達的所有情況中最寬者，點估計假設依接單順序送達。總計以點估計計入，括號內為可能範圍。對照 2026/10 的 Uber 報酬明細，4 組夾單用點估計的補足合計誤差約 5%，可拿來對照明細。</li>
         <li><b>多商家組合單</b>：派單卡只顯示一個總金額。因無法得知各單拆分，本工具以「派單總額 vs 各單法定最低合計」估算補足，為補足金額的保守下限；實際以 Uber 報酬明細為準。</li>
         <li><b>取消</b>：不可歸責於你的取消，報酬不低於「已提供服務分鐘 ÷ 60 × 最低時薪 × 1.25」，沒有每筆 45 元保底；可歸責於你的取消無報酬。服務時間自接單起算至取消為止。本工具假設全部取消的派單不計入趟次挑戰。</li>
         <li><b>金額進位</b>：法定最低保障金額先計算至小數點後第二位，再無條件進位至小數點後第一位。</li>
@@ -386,7 +387,7 @@
         <li><b>過路費償還</b>：外送途中如有過路費等收費，可向 Uber Eats 申請償還（以 Uber 規定為準）。屬代墊費用的償還款，不計入法定最低保障；計入預估總收入以便對照週報酬明細的入帳金額。</li>
         <li><b>現金單抵銷</b>：現金單向收貨人收取的現金（不含小費）屬代 Uber Eats 收取的款項，結算時會從外送費中扣抵。現金收款不是收入，不影響總收入與法定最低；預計匯款金額 = 預估總收入 − 現金收款。若現金收款超過應付外送費，差額需償還給 Uber Eats。</li>
         <li><b>即時提領手續費</b>：使用即時提領提前領款時，Uber 會從提領金額扣除手續費，費率以 App 顯示為準。手續費不影響報酬與法定最低，只減少實際入帳金額；預計匯款金額會再扣除此項。</li>
-        <li>物流行程（優物流、優快送）原則上不適用外送專法。</li>
+        <li><b>物流行程</b>（優物流、優快送）原則上不適用外送專法，Uber 的基本報酬保障明細也不會列出；若有比照的待遇屬 Uber 自行提供、可能變動。這類派單請勾選「優物流／不適用保障」，不核算法定最低與補足。派單時才看得到是否為物流單，事後 App 與明細都不會標示，建議當下就勾選。</li>
         <li>來源：<a href="https://www.uber.com/tw/zh-tw/blog/delivery-partner-earnings/" target="_blank" rel="noopener">Uber Eats 外送合作夥伴報酬說明</a> ·
           <a href="https://www.bnext.com.tw/article/89738//taiwan-food-delivery-law-2026" target="_blank" rel="noopener">數位時代：2026 外送專法</a> ·
           <a href="https://www.justlaw.com.tw/ViewLawTxt.php?id=2033" target="_blank" rel="noopener">天秤座法律事務所：外送專法報酬、疊單解析</a></li>
@@ -436,10 +437,11 @@
   // 單筆：minutes = 接單→完成的總分鐘；夾單：minutes = 該趟「路段」分鐘（上一站→完成本趟），pickupMin = 接受派單→領取餐點
   // acceptAt = 中途加單被接受的時點（首單接單後第幾分鐘）；status = done / cancelNA（不可歸責取消）/ cancelA（可歸責取消）
   // feeMode = each（逐單計價）/ total（多商家組合單，派單卡只顯示總額 totalBase）
+  // noGuarantee = 優物流等不適用外送專法保障的派單：不核算法定最低與補足
   const STATUS = { done: '完成', cancelNA: '取消（不可歸責）', cancelA: '取消（可歸責）' };
   function newOrder() { return { id: uid(), base: '', minutes: '', acceptAt: '', status: 'done' }; }
   function newTrip(orderCount = 1) {
-    const t = { id: uid(), pickupMin: '', timeMode: 'segments', totalTime: '', lastDelivered: 'order', feeMode: 'each', totalBase: '', tip: '', adjust: '', returnFee: '', toll: '', cash: '', note: '', orders: [] };
+    const t = { id: uid(), pickupMin: '', timeMode: 'segments', totalTime: '', lastDelivered: 'order', feeMode: 'each', totalBase: '', noGuarantee: false, tip: '', adjust: '', returnFee: '', toll: '', cash: '', note: '', orders: [] };
     for (let i = 0; i < orderCount; i++) t.orders.push(newOrder());
     return t;
   }
@@ -474,6 +476,7 @@
       const t = cleanFields(s, newTrip(0), ['pickupMin', 'totalTime', 'totalBase', 'tip', 'adjust', 'returnFee', 'toll', 'cash']);
       t.timeMode = oneOf(s.timeMode, ['segments', 'total'], 'segments');
       t.feeMode = oneOf(s.feeMode, ['each', 'total'], 'each');
+      t.noGuarantee = s.noGuarantee === true;
       t.lastDelivered = /^(order|unknown|\d+)$/.test(String(s.lastDelivered)) ? String(s.lastDelivered) : 'order';
       t.note = typeof s.note === 'string' ? s.note : '';
       t.orders = (Array.isArray(s.orders) ? s.orders : []).map(so => {
@@ -533,62 +536,89 @@
     const L = Number(v);
     return v !== 'order' && Number.isInteger(L) && L >= 0 && L < t.orders.length - 1 ? L : 'order';
   }
-  // 每單服務時間（秒）的上限，以及各情境下的下限（可能有多組）。一般模式只有一組且上下限相同。
+  // 單筆服務時間的中位數（秒）：估算模式中送達時間未知的單以此作為點估計。
+  // 只取已完成、適用保障且有填時間的單筆派單；沒有紀錄時用 24 分鐘（對照 2026/10 Uber 報酬明細的經驗值）
+  const DEFAULT_SINGLE_SEC = 24 * 60;
+  function singleStats() {
+    const xs = state.trips
+      .filter(t => t.orders.length === 1 && !t.noGuarantee && orderStatus(t.orders[0]) === 'done' && toSec(t.orders[0].minutes) > 0)
+      .map(t => toSec(t.orders[0].minutes)).sort((a, b) => a - b);
+    const n = xs.length, k = n >> 1;
+    return { n, sec: !n ? DEFAULT_SINGLE_SEC : n % 2 ? xs[k] : Math.round((xs[k - 1] + xs[k]) / 2) };
+  }
+  // 每單服務時間（秒）的上限、各情境下的下限（可能有多組），以及點估計。一般模式三者相同。
   // 估算模式：最後送達的那單 = 總時間 − 接單時點；其他單最晚可到總時間，最早可在接單當下完成，
-  // 但每次加單時須有更早接的單仍在途（取前一單撐到加單時，服務時間最短）
+  // 但每次加單時須有更早接的單仍在途（取前一單撐到加單時，服務時間最短）。
+  // 點估計：送達時間未知的單取單筆服務時間中位數，限制在可能範圍內；不確定送達順序時假設依接單順序送達
   function orderSecondsBounds(t) {
-    if (!isEstimate(t)) { const s = orderSeconds(t); return { lows: [s], hi: s }; }
+    if (!isEstimate(t)) { const s = orderSeconds(t); return { lows: [s], hi: s, est: s }; }
     const T = toSec(t.totalTime), n = t.orders.length, mode = lastMode(t);
     const acc = t.orders.map((o, i) => i ? toSec(o.acceptAt) : 0);
     const hi = acc.map(a => Math.max(0, T - a));
     const forLast = (L) => acc.map((a, i) => Math.max(0, (i === L ? T : Math.min(T, Math.max(a, i < L ? acc[i + 1] : a))) - a));
-    if (mode === 'unknown') return { lows: acc.map((_, L) => forLast(L)), hi };
-    if (mode !== 'order') return { lows: [forLast(mode)], hi };
     // 依接單順序送達：送達時間也依序遞增，最後一單即為總時間
-    let earliest = 0;
-    return { lows: [acc.map((a, i) => { earliest = Math.min(T, Math.max(earliest, a, i + 1 < n ? acc[i + 1] : T)); return Math.max(0, earliest - a); })], hi };
+    const forOrder = () => {
+      let earliest = 0;
+      return acc.map((a, i) => { earliest = Math.min(T, Math.max(earliest, a, i + 1 < n ? acc[i + 1] : T)); return Math.max(0, earliest - a); });
+    };
+    const pointFor = (m) => {
+      const L = m === 'order' ? n - 1 : m, lo = m === 'order' ? forOrder() : forLast(m), med = singleStats().sec;
+      let prevEnd = 0;
+      return acc.map((a, i) => {
+        if (i === L) return hi[i];
+        let d = Math.min(Math.max(med, lo[i]), hi[i]);
+        if (m === 'order') { d = Math.max(0, Math.min(T, Math.max(a + d, prevEnd)) - a); prevEnd = a + d; }
+        return d;
+      });
+    };
+    if (mode === 'unknown') return { lows: acc.map((_, L) => forLast(L)), hi, est: pointFor('order') };
+    if (mode !== 'order') return { lows: [forLast(mode)], hi, est: pointFor(mode) };
+    return { lows: [forOrder()], hi, est: pointFor('order') };
   }
-  // 計算欄位一律保留下限與上限（*Hi）；總計以下限計入
+  // 計算欄位保留點估計（無後綴）、下限（*Lo）與上限（*Hi）；非估算模式三者相同。總計以點估計計入
   function calcTrip(t) {
-    const pooled = isPooled(t), estimate = isEstimate(t);
-    const r = { pooled, estimate, base: 0, minutes: 0, minutesHi: 0, legal: 0, legalHi: 0, topup: 0, topupHi: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), cash: num(t.cash), orders: [] };
-    // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較
+    const pooled = isPooled(t), estimate = isEstimate(t), noGuarantee = !!t.noGuarantee;
+    const r = { pooled, estimate, noGuarantee, base: 0, cancelled: 0, tip: num(t.tip), adjust: num(t.adjust) + num(t.returnFee), toll: num(t.toll), cash: num(t.cash), orders: [] };
+    // 派單卡金額已含基本報酬加成（Base+），直接與法定最低比較；不適用保障的派單不核算法定最低
     const evalCase = (secsArr) => t.orders.map((o, i) => {
       const status = orderStatus(o), secs = secsArr[i], m = roundMin(secs);
-      const base = pooled ? 0 : num(o.base), legal = legalMinForOrder(m, status);
+      const base = pooled ? 0 : num(o.base), legal = noGuarantee ? 0 : legalMinForOrder(m, status);
       return { status, base, secs, m, legal, topup: pooled ? 0 : Math.max(0, legal - base) };
     });
     const sum = (c, k) => c.reduce((a, x) => a + x[k], 0);
     // 多商家組合單只顯示總額、無法得知各單拆分：以「總額 vs 各單法定最低合計」估算，為補足金額的保守下限
-    const caseTopup = (c) => pooled ? Math.max(0, sum(c, 'legal') - num(t.totalBase)) : sum(c, 'topup');
-    const { lows, hi } = orderSecondsBounds(t);
-    const loCases = lows.map(evalCase), hiCase = evalCase(hi);
+    const caseTopup = (c) => noGuarantee ? 0 : pooled ? Math.max(0, sum(c, 'legal') - num(t.totalBase)) : sum(c, 'topup');
+    const { lows, hi, est } = orderSecondsBounds(t);
+    const loCases = lows.map(evalCase), hiCase = evalCase(hi), estCase = evalCase(est);
     const minOf = (i, k) => Math.min(...loCases.map(c => c[i][k]));
     t.orders.forEach((o, i) => {
-      const h = hiCase[i], lo = { secs: minOf(i, 'secs'), m: minOf(i, 'm'), legal: minOf(i, 'legal'), topup: minOf(i, 'topup') };
-      r.orders.push({ base: h.base, mins: lo.m, minsHi: h.m, secs: lo.secs, secsHi: h.secs, segSec: toSec(o.minutes), acceptSec: i ? toSec(o.acceptAt) : 0, status: h.status,
-        legal: lo.legal, legalHi: h.legal, topup: lo.topup, topupHi: h.topup, paid: h.base + lo.topup, paidHi: h.base + h.topup });
+      const h = hiCase[i], e = estCase[i], lo = { secs: minOf(i, 'secs'), m: minOf(i, 'm'), legal: minOf(i, 'legal'), topup: minOf(i, 'topup') };
+      r.orders.push({ base: h.base, segSec: toSec(o.minutes), acceptSec: i ? toSec(o.acceptAt) : 0, status: h.status,
+        mins: e.m, minsLo: lo.m, minsHi: h.m, secs: e.secs, secsLo: lo.secs, secsHi: h.secs,
+        legal: e.legal, legalLo: lo.legal, legalHi: h.legal, topup: e.topup, topupLo: lo.topup, topupHi: h.topup,
+        paid: h.base + e.topup, paidLo: h.base + lo.topup, paidHi: h.base + h.topup });
       if (h.status !== 'done') r.cancelled++;
     });
     // 整趟下限取補足最少的情境（各單下限可能來自不同情境，不一定能同時成立）
     r.base = pooled ? num(t.totalBase) : sum(hiCase, 'base');
-    r.minutes = Math.min(...loCases.map(c => sum(c, 'm'))); r.minutesHi = sum(hiCase, 'm');
-    r.legal = Math.min(...loCases.map(c => sum(c, 'legal'))); r.legalHi = sum(hiCase, 'legal');
-    r.topup = Math.min(...loCases.map(caseTopup)); r.topupHi = caseTopup(hiCase);
-    r.paid = r.base + r.topup; r.paidHi = r.base + r.topupHi;
+    r.minutes = sum(estCase, 'm'); r.minutesLo = Math.min(...loCases.map(c => sum(c, 'm'))); r.minutesHi = sum(hiCase, 'm');
+    r.legal = sum(estCase, 'legal'); r.legalLo = Math.min(...loCases.map(c => sum(c, 'legal'))); r.legalHi = sum(hiCase, 'legal');
+    r.topup = caseTopup(estCase); r.topupLo = Math.min(...loCases.map(caseTopup)); r.topupHi = caseTopup(hiCase);
+    r.paid = r.base + r.topup; r.paidLo = r.base + r.topupLo; r.paidHi = r.base + r.topupHi;
     // 過路費屬償還款，不參與法定最低比較，僅加入小計
     // 現金收款是代收款、不是收入，不計入小計，只在結算時抵銷
     r.total = r.paid + r.tip + r.adjust + r.toll;
+    r.totalLo = r.total + r.topupLo - r.topup;
     r.totalHi = r.total + r.topupHi - r.topup;
     return r;
   }
   function calcAll() {
-    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, topupHi: 0, tips: 0, adjust: 0, toll: 0, cash: 0, tier: 0, tierLabel: '', other: num(state.otherBonus), instantFee: num(state.instantFee) };
+    const s = { trips: state.trips.length, doneTrips: doneTripCount(), orders: 0, cancelled: 0, stackTrips: 0, stackOrders: 0, minutes: 0, base: 0, topup: 0, topupLo: 0, topupHi: 0, tips: 0, adjust: 0, toll: 0, cash: 0, tier: 0, tierLabel: '', other: num(state.otherBonus), instantFee: num(state.instantFee) };
     state.trips.forEach(t => {
       const r = calcTrip(t);
       s.orders += t.orders.length; s.cancelled += r.cancelled;
       if (t.orders.length > 1) { s.stackTrips++; s.stackOrders += t.orders.length; }
-      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.topupHi += r.topupHi; s.tips += r.tip; s.adjust += r.adjust; s.toll += r.toll; s.cash += r.cash;
+      s.minutes += r.minutes; s.base += r.base; s.topup += r.topup; s.topupLo += r.topupLo; s.topupHi += r.topupHi; s.tips += r.tip; s.adjust += r.adjust; s.toll += r.toll; s.cash += r.cash;
     });
     // 趟次挑戰：只計入至少完成一單的派單
     const achieved = state.tiers
@@ -608,7 +638,9 @@
       if (next) s.tierLabel = `再 ${next - s.doneTrips} 趟達成下一階級`;
     }
     s.total = s.base + s.topup + s.tips + s.adjust + s.toll + s.tier + s.other;
-    s.totalHi = s.total + s.topupHi - s.topup; // 含估算趟次時的上限
+    // 含估算趟次時，總計以點估計計入，另外保留下限與上限
+    s.totalLo = s.total + s.topupLo - s.topup;
+    s.totalHi = s.total + s.topupHi - s.topup;
     // 實際入帳：扣除現金收款抵銷與即時提領手續費；負值 = 現金收款超過應付外送費，差額需償還給 Uber
     s.payout = s.total - s.cash - s.instantFee;
     return s;
@@ -640,6 +672,7 @@
           <div class="title">
             第 ${idx + 1} 趟
             ${isStack ? `<span class="badge stack">夾單 ${t.orders.length} 單</span>` : `<span class="badge">單筆</span>`}
+            ${r.noGuarantee ? '<span class="badge muted">不適用保障</span>' : ''}
             ${r.topupHi > 0 ? `<span class="badge warn">${topupBadgeText(r)}</span>` : ''}
           </div>
           <div class="toolbar">
@@ -678,7 +711,7 @@
           ${r.pooled ? `<label class="field"><span class="lbl">派單總額 <span class="help" tabindex="0" data-tip="派單卡顯示的總預估外送費。無法得知各單拆分，補足以「總額 vs 各單法定最低合計」估算，為保守下限；實際以 Uber 報酬明細為準。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="totalBase" value="${t.totalBase}" placeholder="例：120"><em>元</em></div></label>` : ''}
         </div>
-        <div class="hint" style="margin:0 0 4px">${r.estimate
+        <div class="hint${r.estimate ? ' est-hint' : ''}" style="margin:0 0 4px">${r.estimate
           ? estimateHint(t)
           : '每趟服務時間 = 取餐路段 + 各趟送達路段累計（2026/8/17 起，重疊時間重複計算）；中途加單自接受該單時起算。請依完成順序填寫。'}</div>` : ''}
         <div class="table-scroll">
@@ -687,7 +720,7 @@
             <th>#</th>
             <th>狀態 <span class="help" tabindex="0" data-tip="不可歸責於你的取消：報酬不低於「已服務分鐘 ÷ 60 × 保障時薪」，無每筆最低保障。可歸責於你的取消：無報酬。服務時間算到取消為止。">?</span></th>
             <th>派單基本報酬 <span class="help" tabindex="0" data-tip="派單卡上的預估基本外送費，已含基本報酬加成（Base+），不含差額補足與獎勵。中途加單請填派單卡顯示的淨增加金額。">?</span></th>
-            ${isStack ? `<th>接單時點 <span class="help" tabindex="0" data-tip="中途加單：首單接單後第幾分鐘接受這張追加單，該單服務時間自此起算（例：本趟 20:55 開始、此單 21:06 → 填 11 分）。與首單同時派出則留空。">?</span></th>` : ''}
+            ${isStack ? `<th>接單時點 <span class="help" tabindex="0" data-tip="中途加單：首單接單後第幾分鐘接受這張追加單，該單服務時間自此起算（例：本趟 20:55 開始、此單 21:06 → 填 11 分）。與首單同時派出則留空。App 行程紀錄裡各乘客旁的時間只到分鐘，對照 Uber 報酬明細，加單的計時起點可能比該時間早幾分鐘。">?</span></th>` : ''}
             ${r.estimate ? '' : `<th>${isStack ? '送達路段' : '服務時間'} <span class="help" tabindex="0" data-tip="${isStack ? '上一站（領取餐點或完成上一趟）→ 完成（或取消）本趟的時間（分＋秒）。各路段不先取整，只對每單最終服務時間取整。' : '從接受派單到完成（或取消）該筆訂單的時間（分＋秒，含前往店家、等餐、送餐、找地址），可對照 App 行程費用紀錄填寫，會四捨五入至整分鐘。'}">?</span></th>`}
             <th>服務時間 <span class="help" tabindex="0" data-tip="接受該單 → 完成本趟的分鐘數，四捨五入至整分鐘（未滿 30 秒捨去、30 秒以上進位），用於法定最低計算。">?</span></th>
             <th>法定最低</th>
@@ -705,7 +738,7 @@
                 <td>${r.pooled ? '<span class="hint">合併計價</span>' : `<div class="unit"><input type="number" min="0" step="1" data-f="base" value="${o.base}" placeholder="例：52"><em>元</em></div>`}</td>
                 ${isStack ? `<td>${i ? durInputHtml('data-f', 'acceptAt', o.acceptAt, '0') : '<span class="hint">0 分</span>'}</td>` : ''}
                 ${r.estimate ? '' : `<td>${durInputHtml('data-f', 'minutes', o.minutes, isStack ? '例：10' : '例：25')}</td>`}
-                ${orderCellsHtml(ro, r.pooled)}
+                ${orderCellsHtml(ro, r)}
               </tr>`;
             }).join('')}
           </tbody>
@@ -719,6 +752,8 @@
             <div class="unit"><input type="number" step="1" data-tf="adjust" value="${t.adjust}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">回程費用</span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="returnFee" value="${t.returnFee}" placeholder="0"><em>元</em></div></label>
+          <label class="field"><span class="lbl">外送專法保障 <span class="help" tabindex="0" data-tip="物流行程（優物流、優快送）原則上不適用外送專法，Uber 的基本報酬保障明細不會列出這類派單。勾選後不核算法定最低與補足，派單金額與回程費用照實填寫即可。派單時才看得到是否為物流單，建議當下勾選。">?</span></span>
+            <span style="display:flex;align-items:center;gap:6px;min-height:38px;cursor:pointer"><input type="checkbox" data-act="noGuarantee" ${r.noGuarantee ? 'checked' : ''} style="width:auto;margin:0">優物流／不適用</span></label>
           <label class="field"><span class="lbl">過路費償還 <span class="help" tabindex="0" data-tip="外送途中如有過路費等收費，可向 Uber Eats 申請償還（以 Uber 規定為準）。屬償還款，不計入法定最低保障。">?</span></span>
             <div class="unit"><input type="number" min="0" step="1" data-tf="toll" value="${t.toll ?? ''}" placeholder="0"><em>元</em></div></label>
           <label class="field"><span class="lbl">現金收款 <span class="help" tabindex="0" data-tip="現金單向收貨人收取的現金（不含小費）。屬代 Uber 收取的款項，不是收入，結算時從外送費扣抵。">?</span></span>
@@ -776,12 +811,12 @@
 
     $('#sPerTrip').textContent = money(s.trips ? s.total / s.trips : 0);
     $('#sPerOrder').textContent = money(s.orders ? s.total / s.orders : 0);
-    // 含估算趟次時，補足與總收入以下限計入，另外標示上限
-    const est = s.topupHi > s.topup + 1e-9;
-    $('#sTopup').innerHTML = est ? `${money(s.topup)}<small>–${money(s.topupHi)}</small>` : money(s.topup);
+    // 含估算趟次時，補足與總收入以點估計計入，另外標示可能範圍
+    const est = s.topupHi > s.topupLo + 1e-9;
+    $('#sTopup').innerHTML = est ? `${money(s.topup)}<small>（${money(s.topupLo)}–${money(s.topupHi)}）</small>` : money(s.topup);
     $('#statTopup').classList.toggle('warn', s.topupHi > 0);
-    $('#bTopupNote').textContent = est ? `逐趟核算；含估算趟次，可能為 ${money(s.topup)}–${money(s.topupHi)}` : '逐趟核算';
-    $('#bTotalNote').textContent = est ? `以下限計入，最多可能 ${money(s.totalHi)}` : '';
+    $('#bTopupNote').textContent = est ? `逐趟核算；含估算趟次，可能為 ${money(s.topupLo)}–${money(s.topupHi)}` : '逐趟核算';
+    $('#bTotalNote').textContent = est ? `以點估計計入，可能為 ${money(s.totalLo)}–${money(s.totalHi)}` : '';
 
     $('#bBase').textContent = money(s.base);
     $('#bTopup').textContent = money(s.topup);
@@ -812,8 +847,9 @@
   function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
   function tripFootHtml(r) {
-    return `<span>服務時間合計 <b class="mono">${rangeOf(r.minutes, r.minutesHi, String)}</b> 分 · 補足 <b class="mono">${rangeOf(r.topup, r.topupHi, money)}</b>${r.cancelled ? ` · 取消 <b class="mono">${r.cancelled}</b> 單` : ''}${r.cash ? ` · 現金收款 <b class="mono">${money(r.cash)}</b>（不計入小計）` : ''}${r.estimate ? ' · 估算，總計以下限計入' : ''}</span>
-      <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${rangeOf(r.total, r.totalHi, money)}</span>`;
+    const topup = r.noGuarantee ? '不適用' : estRange(r.topupLo, r.topup, r.topupHi, money);
+    return `<span>服務時間合計 <b class="mono">${estRange(r.minutesLo, r.minutes, r.minutesHi, String)}</b> 分 · 補足 <b class="mono">${topup}</b>${r.cancelled ? ` · 取消 <b class="mono">${r.cancelled}</b> 單` : ''}${r.cash ? ` · 現金收款 <b class="mono">${money(r.cash)}</b>（不計入小計）` : ''}${r.estimate && r.topupHi > r.topupLo ? ' · 估算，總計以點估計計入' : ''}</span>
+      <span class="subtotal" style="color:var(--text)"><small>本趟小計</small>${estRange(r.totalLo, r.total, r.totalHi, money)}</span>`;
   }
   // 分＋秒兩格共同對應一個以分鐘儲存的值；attr 為 data-f（訂單欄位）或 data-tf（趟次欄位）
   function durInputHtml(attr, key, v, ph) {
@@ -827,27 +863,30 @@
     const m = $('[data-part="m"]', dur).value, s = $('[data-part="s"]', dur).value;
     return m === '' && s === '' ? '' : String(num(m) + num(s) / 60);
   }
-  // 估算模式下限與上限不同時顯示為範圍
-  const rangeOf = (lo, hi, f) => lo === hi ? f(lo) : `${f(lo)}–${f(hi)}`;
-  const topupCellHtml = (lo, hi = lo) => `<td class="num ${hi > 0 ? 'topup' : 'ok'}">${hi > 0 ? '+' + rangeOf(lo, hi, money) : '—'}</td>`;
+  // 估算模式：顯示點估計，下限與上限不同時在後面附上可能範圍
+  const estRange = (lo, est, hi, f) => lo === hi ? f(est) : `${f(est)}<span class="hint" style="margin-left:2px">（${f(lo)}–${f(hi)}）</span>`;
+  const topupCellHtml = (lo, est, hi) => `<td class="num ${hi > 0 ? 'topup' : 'ok'}">${hi > 0 ? '+' + estRange(lo, est, hi, money) : '—'}</td>`;
   // 各單的計算欄位：服務時間、法定最低、補足、實得基本（多商家組合單於表尾合併計算）
-  function orderCellsHtml(ro, pooled) {
-    const raw = ro.secs === ro.secsHi && ro.secs % 60 ? `<span class="hint" style="margin-left:4px">（${fmtDur(ro.secs)}）</span>` : '';
-    return `<td class="num">${rangeOf(ro.mins, ro.minsHi, String)} 分${raw}</td><td class="num">${rangeOf(ro.legal, ro.legalHi, money)}</td>` +
-      (pooled ? '<td class="num">—</td><td class="num">—</td>' : `${topupCellHtml(ro.topup, ro.topupHi)}<td class="num"><b>${rangeOf(ro.paid, ro.paidHi, money)}</b></td>`);
+  function orderCellsHtml(ro, r) {
+    const raw = ro.secsLo === ro.secsHi && ro.secs % 60 ? `<span class="hint" style="margin-left:4px">（${fmtDur(ro.secs)}）</span>` : '';
+    const legal = r.noGuarantee ? '<span class="hint">不適用</span>' : estRange(ro.legalLo, ro.legal, ro.legalHi, money);
+    return `<td class="num">${estRange(ro.minsLo, ro.mins, ro.minsHi, String)} 分${raw}</td><td class="num">${legal}</td>` +
+      (r.pooled ? '<td class="num">—</td><td class="num">—</td>' : `${topupCellHtml(ro.topupLo, ro.topup, ro.topupHi)}<td class="num"><b>${estRange(ro.paidLo, ro.paid, ro.paidHi, money)}</b></td>`);
   }
   // 表尾合計：多商家組合單一定是夾單（有接單時點欄）；估算模式沒有路段欄
   function poolCellsHtml(r) {
+    const legal = r.noGuarantee ? '<span class="hint">不適用</span>' : estRange(r.legalLo, r.legal, r.legalHi, money);
     return `<td colspan="2"><b>合計</b></td><td class="num">${money(r.base)}</td><td></td>${r.estimate ? '' : '<td></td>'}` +
-      `<td class="num">${rangeOf(r.minutes, r.minutesHi, String)} 分</td><td class="num">${rangeOf(r.legal, r.legalHi, money)}</td>${topupCellHtml(r.topup, r.topupHi)}<td class="num"><b>${rangeOf(r.paid, r.paidHi, money)}</b></td>`;
+      `<td class="num">${estRange(r.minutesLo, r.minutes, r.minutesHi, String)} 分</td><td class="num">${legal}</td>${topupCellHtml(r.topupLo, r.topup, r.topupHi)}<td class="num"><b>${estRange(r.paidLo, r.paid, r.paidHi, money)}</b></td>`;
   }
   function estimateHint(t) {
-    const mode = lastMode(t);
+    const mode = lastMode(t), { sec, n } = singleStats();
     const last = mode === 'unknown' ? '不確定哪一單最後送達，每一單都可能最後送達（服務時間 = 總時間 − 接單時點）'
-      : `${mode === 'order' ? '各單依接單順序送達，最後一單' : `第 ${mode + 1} 單`}最後送達，服務時間 = 總時間 − 接單時點（精確）`;
-    return `估算：${last}；其餘各單送達時間未知，最短算到加單時仍須在途的時間、最長算到總時間，以範圍顯示。總計以補足最少的情況（下限）計入，實際以 Uber 報酬明細為準。`;
+      : `${mode === 'order' ? '各單依接單順序送達，最後一單' : `第 ${mode + 1} 單`}最後送達，服務時間 = 總時間 − 接單時點`;
+    const med = n ? `你 ${n} 筆單筆派單服務時間的中位數 ${fmtDur(sec)}` : `預設 ${fmtDur(sec)}（尚無單筆紀錄）`;
+    return `估算：${last}；其餘各單送達時間未知，可能範圍為「加單時仍須在途」到「總時間」，點估計取${med}${mode === 'unknown' ? '，並假設依接單順序送達' : ''}。總計以點估計計入，括號內為可能範圍，實際以 Uber 報酬明細為準。`;
   }
-  const topupBadgeText = (r) => `補足 ${rangeOf(r.topup, r.topupHi, money)}`;
+  const topupBadgeText = (r) => `補足 ${r.topupLo === r.topupHi ? money(r.topup) : '約 ' + money(r.topup)}`;
 
   // 只更新某趟的計算欄位（避免輸入時失焦）：輸入欄位都在計算欄位之前，只替換其後的儲存格
   function refreshTripRow(tripEl, t) {
@@ -856,10 +895,12 @@
       const ro = r.orders[i]; if (!ro) return;
       const tds = tr.querySelectorAll('td');
       for (let k = tds.length - 4; k < tds.length; k++) tds[k].remove();
-      tr.insertAdjacentHTML('beforeend', orderCellsHtml(ro, r.pooled));
+      tr.insertAdjacentHTML('beforeend', orderCellsHtml(ro, r));
     });
     const foot = $('tfoot tr', tripEl);
     if (foot) foot.innerHTML = poolCellsHtml(r);
+    const hint = $('.est-hint', tripEl);
+    if (hint) hint.textContent = estimateHint(t);
     $('.trip-foot', tripEl).innerHTML = tripFootHtml(r);
     const head = $('.trip-head .title', tripEl);
     const warn = head.querySelector('.badge.warn');
@@ -899,14 +940,21 @@
       t[src.dataset.tf] = value;
     } else return;
     refreshTripRow(tripEl, t);
+    // 單筆服務時間會改變估算模式的點估計（中位數），一併更新估算中的夾單
+    if (t.orders.length === 1) state.trips.forEach(x => {
+      const el = x !== t && isEstimate(x) && $(`#tripList .trip[data-id="${x.id}"]`);
+      if (el) refreshTripRow(el, x);
+    });
     renderLight();
   });
   $('#tripList').addEventListener('change', e => {
     const act = e.target.dataset.act;
-    if (!['orderCount', 'feeMode', 'timeMode', 'lastDelivered'].includes(act)) return;
+    if (!['orderCount', 'feeMode', 'timeMode', 'lastDelivered', 'noGuarantee'].includes(act)) return;
     const tripEl = e.target.closest('.trip');
     const t = state.trips.find(x => x.id === +tripEl.dataset.id); if (!t) return;
-    if (act === 'timeMode') {
+    if (act === 'noGuarantee') {
+      t.noGuarantee = e.target.checked;
+    } else if (act === 'timeMode') {
       t.timeMode = e.target.value;
     } else if (act === 'lastDelivered') {
       t.lastDelivered = e.target.value;
@@ -962,22 +1010,23 @@
       t.orders.forEach((o, j) => {
         const ro = r.orders[j], first = j === 0;
         // 多商家組合單只有總額：派單金額、補足、實得記在該派單第一列
-        // 估算模式的範圍以「下限~上限」輸出（避免 Excel 把「-」當成負號）
-        const rng = (lo, hi, f = (v) => v.toFixed(1)) => lo === hi ? f(lo) : `${f(lo)}~${f(hi)}`;
-        const pool = (lo, hi = lo) => r.pooled ? (first ? rng(lo, hi) : '') : null;
+        // 估算模式輸出「點估計（下限~上限）」（範圍用「~」，避免 Excel 把「-」當成負號）
+        const rng = (lo, est, hi, f = (v) => v.toFixed(1)) => lo === hi ? f(est) : `${f(est)}（${f(lo)}~${f(hi)}）`;
+        const pool = (lo, est = lo, hi = lo) => r.pooled ? (first ? rng(lo, est, hi) : '') : null;
         const stacked = t.orders.length > 1;
         const seg = r.estimate ? (first ? `總時間 ${fmtDur(toSec(t.totalTime))}` : '') : fmtDur(ro.segSec);
-        rows.push([i + 1, j + 1, STATUS[ro.status], (r.pooled ? '總額' : '逐單') + (r.estimate ? '・估算' : ''), pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), seg,
-          rng(ro.secs, ro.secsHi, fmtDur), rng(ro.mins, ro.minsHi, String), rng(ro.legal, ro.legalHi),
-          pool(r.topup, r.topupHi) ?? rng(ro.topup, ro.topupHi), pool(r.paid, r.paidHi) ?? rng(ro.paid, ro.paidHi),
-          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? rng(r.total, r.totalHi) : '', first ? r.cash : '', first ? t.note : '',
+        const mode = (r.pooled ? '總額' : '逐單') + (r.estimate ? '・估算' : '') + (r.noGuarantee ? '・不適用保障' : '');
+        rows.push([i + 1, j + 1, STATUS[ro.status], mode, pool(r.base) ?? ro.base, fmtDur(ro.acceptSec), seg,
+          rng(ro.secsLo, ro.secs, ro.secsHi, fmtDur), rng(ro.minsLo, ro.mins, ro.minsHi, String), r.noGuarantee ? '不適用' : rng(ro.legalLo, ro.legal, ro.legalHi),
+          pool(r.topupLo, r.topup, r.topupHi) ?? rng(ro.topupLo, ro.topup, ro.topupHi), pool(r.paidLo, r.paid, r.paidHi) ?? rng(ro.paidLo, ro.paid, ro.paidHi),
+          first ? r.tip : '', first ? num(t.adjust) : '', first ? num(t.returnFee) : '', first ? r.toll : '', first ? rng(r.totalLo, r.total, r.totalHi) : '', first ? r.cash : '', first ? t.note : '',
           first && stacked && t.pickupMin !== '' ? fmtDur(toSec(t.pickupMin)) : '', first && stacked ? LAST_LABEL(lastMode(t)) : '']);
       });
     });
     const s = calcAll();
     rows.push([]);
     rows.push(['總計', '', '', '', s.base.toFixed(1), '', '', '', s.minutes, '', s.topup.toFixed(1), '', s.tips, s.adjust, '', s.toll, s.total.toFixed(1), s.cash, `派單 ${s.trips}；行程 ${s.orders}；取消 ${s.cancelled}；夾單派單 ${s.stackTrips}；計入挑戰 ${s.doneTrips} 趟；趟次獎勵 ${s.tier}；其他獎勵 ${s.other}` +
-      (s.topupHi > s.topup ? `；含估算趟次，補足 ${s.topup.toFixed(1)}~${s.topupHi.toFixed(1)}、總收入最多 ${s.totalHi.toFixed(1)}` : '') +
+      (s.topupHi > s.topupLo ? `；含估算趟次，補足與總收入以點估計計入，補足可能 ${s.topupLo.toFixed(1)}~${s.topupHi.toFixed(1)}、總收入可能 ${s.totalLo.toFixed(1)}~${s.totalHi.toFixed(1)}` : '') +
       (s.instantFee ? `；即時提領手續費 ${s.instantFee}` : '') +
       (s.cash || s.instantFee ? `；${s.payout < 0 ? '預計倒欠 Uber' : '預計匯款'} ${Math.abs(s.payout).toFixed(1)}` : '')]);
     const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -1073,6 +1122,7 @@
         const mode = get('計價方式');
         cur = newTrip(0); curKey = key; trips.push(cur);
         cur.feeMode = mode.includes('總額') ? 'total' : 'each';
+        cur.noGuarantee = mode.includes('不適用保障');
         cur.timeMode = mode.includes('估算') ? 'total' : 'segments';
         if (cur.timeMode === 'total') cur.totalTime = durField(dur('路段時間'));
         cur.pickupMin = durField(dur('接單→取餐'));
